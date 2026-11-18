@@ -41,6 +41,8 @@ test('real timestamps, text-only results, diarization and subtitle interchange r
   for (const format of ['srt', 'vtt'] as const) {
     const parsed = parseTranscriptSubtitles(exportTranscript(document(), format).content);
     assert.equal(parsed[0].text, 'Hello world.'); assert.equal(parsed[0].end, 1.5);
+    const markup = 'Q&A: <3 if a < b, "&lt;" stays';
+    assert.equal(parseTranscriptSubtitles(exportTranscript(document([{ id: 'markup', text: markup, start: 0, end: 1 }]), format).content)[0].text, markup);
   }
   assert.throws(() => normalizeTranscript({ segments: [{ text: 'Broken', start: 4, end: 3 }] }), /invalid segment/);
   assert.throws(() => transcriptionParameters('custom', { file: '/private/path' }), /Unsupported/);
