@@ -158,6 +158,8 @@ export function mediaType(bytes: Buffer, modality: Modality) {
     [ascii.slice(4, 8) === 'ftyp', modality === 'audio' ? 'audio/mp4' : 'video/mp4', modality === 'audio' ? 'm4a' : 'mp4'],
     [head.subarray(0, 4).equals(Buffer.from('1a45dfa3', 'hex')), modality === 'audio' ? 'audio/webm' : 'video/webm', 'webm'],
     [ascii.startsWith('RIFF') && ascii.slice(8, 12) === 'WAVE', 'audio/wav', 'wav'],
+    // ADTS AAC shares the MPEG audio sync bits; its layer bits are always 00, which no MP3 frame uses.
+    [head[0] === 255 && (head[1] & 0xf6) === 0xf0, 'audio/aac', 'aac'],
     [ascii.startsWith('ID3') || (head[0] === 255 && (head[1] & 0xe0) === 0xe0), 'audio/mpeg', 'mp3'],
     [ascii.startsWith('OggS'), 'audio/ogg', 'ogg'], [ascii.startsWith('fLaC'), 'audio/flac', 'flac'],
   ] as const;

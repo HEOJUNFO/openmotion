@@ -343,6 +343,14 @@ test('JSON reader honors per-request size limits', async () => {
   await assert.rejects(apiJson(source, 'https://example.com', {}, { maxBytes: 512 }), /Provider response exceeds/);
 });
 
+test('ADTS AAC output is identified as AAC, not as the MP3 whose sync bits it shares', () => {
+  const frame = (header: string) => Buffer.concat([Buffer.from(header, 'hex'), Buffer.alloc(32)]);
+  // MPEG-4 AAC-LC with and without CRC, then MPEG-2 AAC.
+  for (const header of ['fff15080', 'fff05080', 'fff95080']) assert.deepEqual(mediaType(frame(header), 'audio'), { mimeType: 'audio/aac', extension: 'aac' });
+  // MPEG-1 Layer III, MPEG-2 Layer III and an ID3v2 tag stay MP3.
+  for (const header of ['fffb9064', 'fff38064', '49443304']) assert.deepEqual(mediaType(frame(header), 'audio'), { mimeType: 'audio/mpeg', extension: 'mp3' });
+});
+
 test('media import rejects non-public URLs, unexpected file signatures and wrong output modalities', async () => {
   for (const url of ['http://example.com/file.png', 'https://127.0.0.1/file.png', 'https://user:pass@example.com/file.png', 'https://[::1]/image']) await assert.rejects(downloadMedia(url, new AbortController().signal));
   assert.throws(() => mediaType(png, 'video'), /valid video/);
