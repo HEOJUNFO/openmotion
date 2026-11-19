@@ -77,6 +77,19 @@ test('an AVIF still is probed as an image, not as the MP4 its container resemble
   assert.equal(asset.modality, 'image');
 }));
 
+test('a video stored sideways is probed at the size it plays at', () => fixture(async store => {
+  const ffmpeg = async (...args: string[]) => { const result = await execute(verificationBinaries().ffmpeg, ['-v', 'error', ...args], store.directory, 20_000); assert.equal(result.code, 0, result.stderr); };
+  const flat = path.join(store.directory, 'flat.mp4'), turned = path.join(store.directory, 'turned.mp4'), flipped = path.join(store.directory, 'flipped.mp4');
+  await ffmpeg('-f', 'lavfi', '-i', 'testsrc2=size=64x48:rate=10:duration=1', '-an', '-y', flat);
+  // What a phone held upright records: landscape frames plus a display matrix.
+  await ffmpeg('-display_rotation', '90', '-i', flat, '-c', 'copy', '-y', turned);
+  await ffmpeg('-display_rotation', '180', '-i', flat, '-c', 'copy', '-y', flipped);
+  const size = async (file: string) => { const media = await probeLibraryMedia(file); return [media.width, media.height]; };
+  assert.deepEqual(await size(flat), [64, 48]);
+  assert.deepEqual(await size(turned), [48, 64]);
+  assert.deepEqual(await size(flipped), [64, 48]);
+}));
+
 test('workspace generation keeps job identity and pinned references without requiring a project', () => fixture(async store => {
   const original = await image(store.directory), bytes = await readFile(original); let calls = 0;
   const gateway = new ModelGateway(store, { detect: agents, codex: async () => { calls++; return bytes; } });

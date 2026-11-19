@@ -44,6 +44,8 @@ export async function probeLibraryMedia(file: string) {
   if (!kind || stream.codec_type === 'video' && !(stream.width > 0 && stream.height > 0)) throw new Error('Unsupported media type');
   const decoded = await execute(binaries.ffmpeg, ['-v', 'error', '-xerror', '-err_detect', 'explode', '-i', file, '-map', `0:${stream.index}`, stream.codec_type === 'video' ? '-frames:v' : '-frames:a', '1', '-f', 'null', '-'], path.dirname(file), 60_000);
   if (decoded.code) throw new Error('The media file could not be decoded');
+  // Phone footage is stored sideways with a display matrix; players and ffmpeg turn it, so report the size it plays at.
+  const turned = Math.abs(Number(stream.side_data_list?.find((data: any) => data.rotation !== undefined)?.rotation ?? 0)) % 180 === 90;
   return { modality: kind[0].split('/')[0] as Modality, mimeType: kind[0], extension: kind[1], bytes: info.size,
-    ...(stream.width ? { width: stream.width, height: stream.height } : {}), ...(!image && Number(media.format?.duration) > 0 ? { duration: Number(media.format.duration) } : {}) };
+    ...(stream.width ? { width: turned ? stream.height : stream.width, height: turned ? stream.width : stream.height } : {}), ...(!image && Number(media.format?.duration) > 0 ? { duration: Number(media.format.duration) } : {}) };
 }
