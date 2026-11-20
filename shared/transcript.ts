@@ -124,12 +124,13 @@ export function parseTranscriptSubtitles(text: string): TranscriptSegment[] {
   if (typeof text !== 'string' || text.length > 2_000_000) throw new Error('Subtitle file exceeds 2 MB');
   const time = (s: string) => { const parts = s.replace(',', '.').split(':').map(Number); const seconds = parts.pop()!, minutes = parts.pop()!, hours = parts.pop() ?? 0; if (minutes >= 60 || seconds >= 60) throw new Error('Invalid subtitle timestamp'); return hours * 3600 + minutes * 60 + seconds; };
   // Read back the references a WebVTT export writes; one pass, so "&amp;lt;" stays the text "&lt;".
+  // Cue span tags (<v Name>, <i>, <c.loud>, <00:01.500>) are markup, not speech, so they go before the references are read.
   const references: Record<string, string> = { amp: '&', lt: '<', gt: '>' };
-  const cueText = /^\uFEFF?WEBVTT/.test(text) ? (value: string) => value.replace(/&(amp|lt|gt);/g, (_, name: string) => references[name]) : (value: string) => value;
+  const cueText = /^\uFEFF?WEBVTT/.test(text) ? (value: string) => value.replace(/<[^>]*>/g, '').replace(/&(amp|lt|gt);/g, (_, name: string) => references[name]) : (value: string) => value;
   const rows = text.replace(/^\uFEFF/, '').replace(/\r/g, '').split(/\n\s*\n/).flatMap(block => {
     const match = block.match(/(?:^|\n)((?:\d{2,}:)?\d{2}:\d{2}[,.]\d{3})\s+-->\s+((?:\d{2,}:)?\d{2}:\d{2}[,.]\d{3})[^\n]*\n([\s\S]+)/);
     if (!match && block.includes('-->')) throw new Error('Invalid subtitle cue');
-    return match ? [{ start: time(match[1]), end: time(match[2]), text: cueText(match[3].trim()) }] : [];
+    return match ? [{ start: time(match[1]), end: time(match[2]), text: cueText(match[3]).trim() }] : [];
   });
   if (!rows.length) throw new Error('No valid subtitle cues were found');
   return validateSegments(rows);

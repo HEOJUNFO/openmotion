@@ -168,6 +168,9 @@ test('ASR model discovery, defaults and custom protocols use the existing provid
 
 test('subtitle parser accepts WebVTT short timestamps but rejects malformed cues instead of dropping them', () => {
   assert.equal(parseTranscriptSubtitles('WEBVTT\n\n00:01.000 --> 00:02.500\nHello')[0].end, 2.5);
+  // Voice, style and karaoke tags from other tools' WebVTT are not spoken text; an escaped "<" still is.
+  assert.equal(parseTranscriptSubtitles('WEBVTT\n\n00:01.000 --> 00:02.500\n<v Alice> Hello <i>there</i>, <00:01.800><c.loud>a &lt; b</c></v>')[0].text, 'Hello there, a < b');
+  assert.equal(parseTranscriptSubtitles('1\n00:00:01,000 --> 00:00:02,500\n<i>Hello</i>')[0].text, '<i>Hello</i>');
   assert.throws(() => parseTranscriptSubtitles('1\n00:99:00,000 --> 01:00:00,000\nBroken'), /Invalid subtitle timestamp/);
   assert.throws(() => parseTranscriptSubtitles('1\n00:00:01,000 --> 00:00:02,000\nGood\n\n2\nbad --> time\nBroken'), /Invalid subtitle cue/);
 });
