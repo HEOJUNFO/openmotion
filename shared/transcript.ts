@@ -126,8 +126,9 @@ export function parseTranscriptSubtitles(text: string): TranscriptSegment[] {
   // Read back the references a WebVTT export writes; one pass, so "&amp;lt;" stays the text "&lt;".
   // Cue span tags (<v Name>, <i>, <c.loud>, <00:01.500>) are markup, not speech, so they go before the references are read.
   // Only the tags WebVTT defines are taken; any other "<" stays text, as in "a < b and c > d".
+  // A tag's classes or annotation stop at the next "<", so an unclosed "<b " is not rescanned to the end of the cue from every later one.
   const references: Record<string, string> = { amp: '&', lt: '<', gt: '>' };
-  const cueTag = /<\/?(?:c|i|b|u|ruby|rt|v|lang)(?:[.\s][^>]*)?>|<(?:\d{2,}:)?\d{2}:\d{2}\.\d{3}>/g;
+  const cueTag = /<\/?(?:c|i|b|u|ruby|rt|v|lang)(?:[.\s][^<>]*)?>|<(?:\d{2,}:)?\d{2}:\d{2}\.\d{3}>/g;
   const cueText = /^\uFEFF?WEBVTT/.test(text) ? (value: string) => value.replace(cueTag, '').replace(/&(amp|lt|gt);/g, (_, name: string) => references[name]) : (value: string) => value;
   const rows = text.replace(/^\uFEFF/, '').replace(/\r/g, '').split(/\n\s*\n/).flatMap(block => {
     const match = block.match(/(?:^|\n)((?:\d{2,}:)?\d{2}:\d{2}[,.]\d{3})\s+-->\s+((?:\d{2,}:)?\d{2}:\d{2}[,.]\d{3})[^\n]*\n([\s\S]+)/);
