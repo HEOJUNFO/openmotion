@@ -70,8 +70,15 @@ test('a word the provider times with no duration stays in the text and does not 
   const silent = document(normalizeTranscript({ words: [{ word: 'Okay', start: 1, end: 1 }], segments: [{ text: 'Okay.', start: 0.8, end: 1.4 }] })); silent.source.duration = 6;
   assert.equal(silent.segments[0].text, 'Okay.'); assert.deepEqual(silent.segments[0].words, []);
   assert.throws(() => transcriptCaptionSource(html, silent, placement, { pacing: 'word' }), /real word timestamps/);
+  // Without segments, a group whose words all sit on one instant has no span: its text is kept untimed, the rest keeps its clock.
+  assert.deepEqual(normalizeTranscript({ words: [{ word: 'Yes', start: 5, end: 5 }] }), [{ id: 'segment-1', text: 'Yes' }]);
+  const mixed = normalizeTranscript({ words: [{ word: 'Fine.', start: 1, end: 1.4 }, { word: 'Yes', start: 5, end: 5 }, { word: 'sure.', start: 5, end: 5 }, { word: 'Go', start: 9, end: 9.3 }] });
+  assert.deepEqual(mixed.map(row => [row.text, row.start, row.end, row.words?.length]), [['Fine.', 1, 1.4, 1], ['Yes sure.', undefined, undefined, undefined], ['Go', 9, 9.3, 1]]);
+  const untimed = document(mixed); untimed.source.duration = 10;
+  assert.throws(() => transcriptCaptionSource(html, untimed, { ...placement, sourceEnd: 10 }, {}), /Captions require real timestamps/);
   // A word that ends before it starts is still a provider error.
   assert.throws(() => normalizeTranscript({ words: [{ word: 'Broken', start: 1, end: 0.5 }], segments: [{ text: 'Broken', start: 0, end: 2 }] }), /Invalid word timestamps/);
+  assert.throws(() => normalizeTranscript({ words: [{ word: 'Broken', start: 1, end: 0.5 }] }), /Invalid (word|transcript) timestamps/);
 });
 
 test('audio/video transcription uses real WAV extraction, one paid request, persistence and deduplication', () => fixture(async store => {

@@ -70,7 +70,15 @@ export function normalizeTranscript(body: any, offset = 0, duration = 86400): Tr
     }
   } else if (words.length) {
     let group: TranscriptWord[] = [];
-    const flush = () => { if (group.length) rows.push({ id: `segment-${rows.length + 1}`, text: group.map(word => word.text).join(' ').replace(/([\p{Script=Han}])\s+(?=[\p{Script=Han}])/gu, '$1'), start: group[0].start, end: group.at(-1)!.end, words: group.filter(word => !instant(word)) }); group = []; };
+    const flush = () => {
+      if (group.length) {
+        const row = { id: `segment-${rows.length + 1}`, text: group.map(word => word.text).join(' ').replace(/([\p{Script=Han}])\s+(?=[\p{Script=Han}])/gu, '$1') };
+        const span = { ...row, start: group[0].start, end: group.at(-1)!.end };
+        // A group whose words all sit on one instant has no span either, so its text is kept without a clock.
+        rows.push(instant(span) ? row : { ...span, words: group.filter(word => !instant(word)) });
+      }
+      group = [];
+    };
     for (const word of words) { if (group.length && (word.start - group.at(-1)!.end > 0.8 || group.length >= 12)) flush(); group.push(word); if (/[.!?。！？]$/.test(word.text)) flush(); }
     flush();
   } else if (typeof body.text === 'string' && body.text.trim()) rows.push({ id: 'segment-1', text: body.text });
