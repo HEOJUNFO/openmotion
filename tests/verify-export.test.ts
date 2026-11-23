@@ -48,6 +48,24 @@ test('snapshot specifications use the native fps default and rational frame rate
   await assert.rejects(snapshotExportExpectation(pluginRoot, directory), /帧率无效/);
 }));
 
+test('snapshot specifications read a scene whose composition is wrapped in a template', () => fixture(async directory => {
+  const scene = (attributes: string, inner = 'Scene') => `<div id="intro" data-composition-id="intro" data-start="0" data-duration="4.5" data-width="640" data-height="360" ${attributes}>${inner}</div>`;
+  const read = async (content: string) => {
+    await mkdir(path.join(directory, 'compositions'), { recursive: true });
+    await writeFile(path.join(directory, 'compositions/intro.html'), content);
+    return snapshotExportExpectation(pluginRoot, directory, 'compositions/intro.html');
+  };
+  const expected = { width: 640, height: 360, fps: 24, duration: 4.5, audio: 'optional' };
+  // The form scene files are saved in: styles, then the composition, inside one template.
+  assert.deepEqual(await read(`<template>\n<style>#intro{position:absolute;inset:0}</style>\n${scene('data-fps="24"')}\n</template>`), expected);
+  assert.deepEqual(await read(`<template>${scene('', '<div data-composition-id="card" data-duration="1" data-width="64" data-height="36"></div>')}</template>`), { ...expected, fps: 30 });
+  // A scene saved as a whole document keeps its own composition; a template beside it is not the scene.
+  const aside = '<template><div data-composition-id="aside" data-duration="9" data-width="64" data-height="36"></div></template>';
+  assert.deepEqual(await read(`<!doctype html><html><body>${aside}${scene('data-fps="24"')}</body></html>`), expected);
+  await assert.rejects(read('<template><p>No composition here</p></template>'), /缺少根 composition/);
+  await assert.rejects(read('<p>No composition here</p>'), /缺少根 composition/);
+}));
+
 test('native H.264 export passes full decode and seeks, while creative and playback checks remain explicit', { skip: !available }, () => fixture(async directory => {
   const file = path.join(directory, 'valid.mp4'); clip(file);
   const report = await verifyExport(file, spec);
