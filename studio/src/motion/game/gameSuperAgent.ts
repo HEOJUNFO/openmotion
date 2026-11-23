@@ -7,6 +7,10 @@ export function gamePlayPath(id: string): string {
   return `/motion-api/games/${encodeURIComponent(id)}/play/index.html`;
 }
 
+function playerLabel(game: GameCard): string {
+  return game.playableAd ? 'Playable ad' : game.multiplayer ? 'Multiplayer' : 'Single player';
+}
+
 export function localizedGameTitle(game: GameCard, locale: string): string {
   return game.i18n?.[locale]?.title || game.title;
 }
@@ -20,7 +24,7 @@ export function toGameCapabilityRef(game: GameCard, displayTitle: string): Capab
     kind: 'game-project',
     id: game.id,
     title: displayTitle,
-    subtitle: `${game.genre} · ${game.multiplayer ? 'Multiplayer' : 'Single player'}`,
+    subtitle: `${game.genre} · ${playerLabel(game)}`,
     genre: game.genre,
     playUrl: gamePlayPath(game.id),
     ...(coverUrl(game) ? { coverUrl: coverUrl(game)! } : {}),
@@ -35,7 +39,7 @@ export function toGameArtifact(game: GameCard, displayTitle: string): Partial<Su
     title: displayTitle,
     subtitle: game.external
       ? `${game.external.author} · ${game.external.model}`
-      : `${game.genre} · ${game.multiplayer ? 'Multiplayer' : 'Game Studio'}`,
+      : `${game.genre} · ${game.playableAd ? 'Playable ad' : game.multiplayer ? 'Multiplayer' : 'Game Studio'}`,
     ...(isExternal ? {} : { projectId: game.id }),
     scenario: game.orientation === 'portrait' ? 'portrait' : 'landscape',
     revision: game.updatedAt,
@@ -48,12 +52,23 @@ export function toGameResourceAttachment(game: GameCard, displayTitle: string): 
     kind: 'game-project',
     id: game.id,
     title: displayTitle,
-    subtitle: `${game.genre} · ${game.multiplayer ? 'Multiplayer' : 'Single player'}`,
+    subtitle: `${game.genre} · ${playerLabel(game)}`,
     ...(coverUrl(game) ? { previewUrl: coverUrl(game)! } : {}),
   };
 }
 
-export function buildDirectGamePrompt(game: GameCard, instruction: string, userNotes?: string): string {
+export function buildGameUserPrompt(game: GameCard, locale: string, userNotes?: string): string {
+  const notes = userNotes?.trim();
+  if (notes) return notes;
+  const desc = localizedGameDescription(game, locale)?.trim();
+  if (desc) return desc;
+  const title = localizedGameTitle(game, locale)?.trim() || game.title;
+  return locale.toLowerCase().startsWith('zh')
+    ? `帮我制作小游戏「${title}」。`
+    : `Build the game "${title}".`;
+}
+
+export function buildGameHiddenInstructions(game: GameCard, instruction: string, userNotes?: string): string {
   const layout = game.orientation === 'portrait' ? 'portrait 9:16 phone layout (390x844)' : 'landscape 16:9 widescreen layout';
   const trimmedNotes = userNotes?.trim();
   const extraNotes = trimmedNotes && trimmedNotes !== game.description.trim()
@@ -65,12 +80,18 @@ export function buildDirectGamePrompt(game: GameCard, instruction: string, userN
     game.setting ? `setting=${game.setting}` : '',
     `multiplayer=${game.multiplayer}`,
     `orientation=${layout}`,
+    // The draft instruction already carries the ad recipe; repeating the format here keeps it visible in Super Agent turns.
+    game.playableAd ? 'format=playable ad (follow the openmotion-game playable-ad recipe: first-frame play with a hand tutorial, short levels, win/fail end cards with a store CTA, one self-contained HTML)' : '',
   ].filter(Boolean);
   return [
     instruction,
     extraNotes,
     `Game Studio context: ${contextParts.join(', ')}. Proceed directly to building and testing without unnecessary questions. If custom visual sprites, textures, music, or sound effects will elevate the game, you may generate reusable assets via openmotion_assets_use(action="generate") and reference their /motion-api/assets/<assetId>/versions/<versionId>/media URLs. Always finish by calling openmotion_present_artifact(kind="game-project", projectId="${game.id}") so the playable result opens in the Browser Artifact Viewer.`,
   ].filter(Boolean).join('\n\n');
+}
+
+export function buildDirectGamePrompt(game: GameCard, instruction: string, userNotes?: string): string {
+  return buildGameHiddenInstructions(game, instruction, userNotes);
 }
 
 export type GameQuickIdea = {
@@ -80,6 +101,8 @@ export type GameQuickIdea = {
   setting: GameSetting | null;
   orientation: 'landscape' | 'portrait';
   multiplayer: boolean;
+  /** Portrait single-player ideas can start as a playable ad. */
+  playableAd?: boolean;
   prompt: string;
 };
 
@@ -110,6 +133,16 @@ export const GAME_STUDIO_QUICK_IDEAS: readonly GameQuickIdea[] = [
     orientation: 'portrait',
     multiplayer: false,
     prompt: 'Create an addictive 9:16 portrait one-tap arcade game playable with one thumb, instant restarts, and combo multipliers.',
+  },
+  {
+    title: 'Pull-the-pin playable ad',
+    genre: 'casual',
+    style: '3d',
+    setting: null,
+    orientation: 'portrait',
+    multiplayer: false,
+    playableAd: true,
+    prompt: 'Make a pull-the-pin coin playable ad: coins pour through ×2 and ×5 rings into a piggy bank, with a hand tutorial and a Play now end card.',
   },
   {
     title: 'Cyberpunk drift racer',

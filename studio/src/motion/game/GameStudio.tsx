@@ -18,7 +18,7 @@ import { projectHref } from '../workspaceRouting';
 import { Tooltip } from '../../components/ui/Tooltip';
 import { GameMasonry, interleavePortrait } from './GameMasonry';
 import { bundledGames, communityGames, communityRemixPrompt, composeBrief, coverUrl, formatPlays, gameApi, gameSource, storedInstruction, genreCovers, genreLabels, settingCovers, styleCovers, genrePlaceholders, isLocalOnly, playableUrl, rememberInstruction, settingLabels, styleLabels } from './gameCatalog';
-import { buildDirectGamePrompt, toGameArtifact, toGameCapabilityRef } from './gameSuperAgent';
+import { buildGameHiddenInstructions, buildGameUserPrompt, toGameArtifact, toGameCapabilityRef } from './gameSuperAgent';
 import './gameStudio.css';
 
 type Menu = 'genre' | 'style' | 'setting';
@@ -49,6 +49,9 @@ export function GameStudio({
   const [setting, setSetting] = useState<GameSetting | null>(null);
   const [multiplayer, setMultiplayer] = useState(false);
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
+  // Portrait games default to a playable ad; it is single-player, so it and Multiplayer switch each other off.
+  const [playableAd, setPlayableAd] = useState(true);
+  const adBuild = orientation === 'portrait' && playableAd;
   const [prompt, setPrompt] = useState('');
   const [menu, setMenu] = useState<Menu>('genre');
   const [submitting, setSubmitting] = useState(false);
@@ -147,7 +150,8 @@ export function GameStudio({
       const ready = created.game.status === 'ready' || created.game.status === 'published';
       setOpenIdState(null);
       const handoff = buildSuperAgentHandoff(toGameCapabilityRef(created.game, displayTitle), {
-        prompt: buildDirectGamePrompt(created.game, created.agentInstruction),
+        prompt: buildGameUserPrompt(created.game, locale),
+        hiddenInstructions: buildGameHiddenInstructions(created.game, created.agentInstruction),
         locale,
         newChat: true,
         autoSend: true,
@@ -163,7 +167,8 @@ export function GameStudio({
     const displayTitle = getGameTitle(game);
     setOpenIdState(null);
     const handoff = buildSuperAgentHandoff(toGameCapabilityRef(game, displayTitle), {
-      prompt: buildDirectGamePrompt(game, instruction),
+      prompt: buildGameUserPrompt(game, locale),
+      hiddenInstructions: buildGameHiddenInstructions(game, instruction),
       locale,
       newChat: true,
       autoSend: true,
@@ -188,7 +193,7 @@ export function GameStudio({
     if (!brief || submitting) return;
     setSubmitting(true);
     // Choosing options without typing is enough to start: the composed brief becomes the prompt.
-    try { started(await gameApi.create({ prompt: prompt.trim() || brief, genre, style, setting, multiplayer, orientation })); setPrompt(''); }
+    try { started(await gameApi.create({ prompt: prompt.trim() || brief, genre, style, setting, multiplayer, orientation, playableAd: adBuild })); setPrompt(''); }
     catch (error) { notify(failure(error), 'error'); }
     finally { setSubmitting(false); }
   };
@@ -253,10 +258,11 @@ export function GameStudio({
             <Button variant="plain" className="om-game-chip" aria-expanded={menu === 'setting'} data-active={Boolean(setting)} onClick={() => { setToggled(null); setMenu(menu === 'setting' ? 'genre' : 'setting'); }}>
               <RemixIcon name="landscape-line" size={15} />{setting ? t(settingLabels[setting]) : t('Setting')}</Button>
             <span className="om-game-ratio" role="radiogroup" aria-label={t('Aspect ratio')}>
-              {(['landscape', 'portrait'] as const).map(id => <Button key={id} variant="plain" role="radio" className="om-game-ratio-option" aria-checked={orientation === id} onClick={() => setOrientation(id)}>
+              {(['landscape', 'portrait'] as const).map(id => <Button key={id} variant="plain" role="radio" className="om-game-ratio-option" aria-checked={orientation === id} onClick={() => { if (id === 'portrait' && orientation !== 'portrait') { setPlayableAd(true); setMultiplayer(false); } setOrientation(id); }}>
                 <RemixIcon name={id === 'portrait' ? 'smartphone-line' : 'computer-line'} size={15} />{t(id === 'portrait' ? 'Portrait' : 'Landscape')}</Button>)}
             </span>
-            <label className="om-game-switch"><input type="checkbox" role="switch" checked={multiplayer} onChange={event => setMultiplayer(event.target.checked)} /><span aria-hidden="true" />{t('Multiplayer')}</label>
+            {orientation === 'portrait' && <label className="om-game-switch"><input type="checkbox" role="switch" checked={playableAd} onChange={event => { setPlayableAd(event.target.checked); if (event.target.checked) setMultiplayer(false); }} /><span aria-hidden="true" />{t('Playable ad')}</label>}
+            <label className="om-game-switch"><input type="checkbox" role="switch" checked={multiplayer && !adBuild} onChange={event => { setMultiplayer(event.target.checked); if (event.target.checked) setPlayableAd(false); }} /><span aria-hidden="true" />{t('Multiplayer')}</label>
             <IconButton variant="ghost" className="om-game-send" aria-label={t('Start building')} disabled={!brief || submitting} onClick={() => void submit()}
               icon={<RemixIcon name={submitting ? 'loader-4-line' : 'arrow-up-line'} size={18} />} />
           </div>

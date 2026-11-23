@@ -22,11 +22,17 @@ export interface WebPublishPopoverProps {
   targetId: string;
   filePath?: string;
   sourcePath?: string;
+  embedUrl?: string;
   title?: string;
   revisionKey?: string;
   compact?: boolean;
+  lazy?: boolean;
   disabled?: boolean;
   triggerLabel?: string;
+  triggerIcon?: string;
+  triggerClassName?: string;
+  autoOpen?: boolean;
+  onAutoOpenConsumed?: () => void;
   side?: 'top' | 'bottom' | 'left' | 'right';
   align?: 'start' | 'center' | 'end';
   onNotify?: (message: string, variant?: 'info' | 'error') => void;
@@ -74,11 +80,17 @@ export function WebPublishPopover({
   targetId,
   filePath,
   sourcePath,
+  embedUrl,
   title,
   revisionKey,
   compact = false,
+  lazy = false,
   disabled = false,
   triggerLabel,
+  triggerIcon = 'share-forward-line',
+  triggerClassName,
+  autoOpen = false,
+  onAutoOpenConsumed,
   side = 'bottom',
   align = 'end',
   onNotify,
@@ -87,7 +99,7 @@ export function WebPublishPopover({
 }: WebPublishPopoverProps) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
-  const { account, refresh: refreshAccount, setAccount } = useAccountSummary();
+  const { account, refresh: refreshAccount, setAccount } = useAccountSummary({ eager: !lazy });
   const [status, setStatus] = useState<WebPublishStatusResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeOp, setActiveOp] = useState<ActiveOp>(null);
@@ -107,6 +119,12 @@ export function WebPublishPopover({
     setCopied(false);
   }, [targetKind, targetId, filePath]);
 
+  useEffect(() => {
+    if (!autoOpen) return;
+    setOpen(true);
+    onAutoOpenConsumed?.();
+  }, [autoOpen, onAutoOpenConsumed]);
+
   useEffect(() => () => {
     if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
   }, []);
@@ -119,6 +137,8 @@ export function WebPublishPopover({
       const next = await webPublishClient.getStatus(targetKind, targetId, {
         filePath,
         sourcePath,
+        embedUrl,
+        title,
         refresh: refreshRemote,
       });
       setStatus(next);
@@ -127,7 +147,7 @@ export function WebPublishPopover({
     } finally {
       setLoading(false);
     }
-  }, [filePath, sourcePath, t, targetId, targetKind]);
+  }, [embedUrl, filePath, sourcePath, t, targetId, targetKind, title]);
 
   useEffect(() => {
     if (!open) return;
@@ -159,7 +179,7 @@ export function WebPublishPopover({
     setError(null);
     try {
       if (op === 'stop') {
-        const stopped = await webPublishClient.unpublish(targetKind, targetId, { filePath, sourcePath });
+        const stopped = await webPublishClient.unpublish(targetKind, targetId, { filePath, sourcePath, embedUrl });
         setStatus(prev => mergePublicationStatus(prev, targetKind, targetId, stopped.publication, prev?.freshness ?? 'unknown'));
         onNotify?.(t('Share link disabled'), 'info');
         return;
@@ -168,6 +188,7 @@ export function WebPublishPopover({
       const published = await webPublishClient.publish(targetKind, targetId, {
         filePath,
         sourcePath,
+        embedUrl,
         deployMode: op,
         name: title,
       });
@@ -201,7 +222,7 @@ export function WebPublishPopover({
     } finally {
       setActiveOp(null);
     }
-  }, [activeOp, copyUrl, filePath, onNotify, refreshAccount, refreshStatus, sourcePath, t, targetId, targetKind, title]);
+  }, [activeOp, copyUrl, embedUrl, filePath, onNotify, refreshAccount, refreshStatus, sourcePath, t, targetId, targetKind, title]);
 
   // Automatically continue deploying as soon as an in-popover OpenDesign sign-in completes.
   useEffect(() => {
@@ -275,15 +296,21 @@ export function WebPublishPopover({
           variant={compact ? 'plain' : 'ghost'}
           type="button"
           disabled={disabled}
-          className={compact ? 'om-web-publish-trigger om-web-publish-trigger--compact' : 'om-button om-web-publish-trigger'}
-          data-primary={compact ? undefined : true}
+          className={
+            triggerClassName
+              ? triggerClassName
+              : compact
+                ? 'om-web-publish-trigger om-web-publish-trigger--compact'
+                : 'om-button om-web-publish-trigger'
+          }
+          data-primary={compact || triggerClassName ? undefined : true}
           data-active={open || undefined}
           data-live={isPublished || undefined}
           aria-label={triggerLabel ?? t('Share')}
           title={triggerLabel ?? t('Share')}
           aria-expanded={open}
         >
-          <RemixIcon name="share-forward-line" size={compact ? 14 : 14} />
+          <RemixIcon name={triggerIcon} size={14} />
           <span className="om-web-publish-trigger-label">{triggerLabel ?? t('Share')}</span>
           {isPublished && <span className="om-web-publish-dot" aria-hidden="true" />}
         </Button>
