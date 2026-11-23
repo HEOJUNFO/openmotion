@@ -1079,7 +1079,8 @@ it('resumes the project from the Explore spotlight without remounting its editor
   const draft = container.querySelector('[aria-label="Editor draft"]');
   expect(draft?.getAttribute('data-project')).toBe(second);
   await click('Explore');
-  await click('Featured · Motion Studio');
+  expect(container.querySelector('.om-feature-slide:not([inert]) h2')?.textContent).toBe('Game Studio');
+  await act(async () => container.querySelectorAll<HTMLButtonElement>('.om-media-segments button')[1]!.click());
   expect(container.querySelector('.om-feature-slide:not([inert]) h2')?.textContent).toBe('Motion Studio');
   await click('Open in Motion Editor');
   expect(page()).toMatchObject({ explore: false, motion: false });
@@ -1100,6 +1101,7 @@ it.each([
       ? Promise.resolve(Response.json({ ...catalog, activeId }))
       : fallback(input, init));
   await mount();
+  await click('Featured · Motion Studio');
   await click('Open in Motion Editor');
   expect(page()).toMatchObject({ explore: false, motion: false, templates: false });
   expect(container.querySelector('[aria-label="Editor draft"]')?.getAttribute('data-project')).toBe(activeId);

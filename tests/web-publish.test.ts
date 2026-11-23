@@ -273,6 +273,17 @@ test('Unified /motion-api/web-publish HTTP routes and Streamable HTTP openmotion
       assert.equal(gameStatus.targetId, createdGame.id);
       assert.equal(gameStatus.active, null);
 
+      // 2b. Game ZIP export returns a valid archive containing index.html (without game.json)
+      const gameExportRes = await fetch(`${origin}/motion-api/games/${encodeURIComponent(createdGame.id)}/export`);
+      assert.equal(gameExportRes.status, 200);
+      assert.equal(gameExportRes.headers.get('content-type'), 'application/zip');
+      assert.match(gameExportRes.headers.get('content-disposition') ?? '', /attachment; filename=/i);
+      const zipBuf = Buffer.from(await gameExportRes.arrayBuffer());
+      const { unzip } = await import('../scripts/template-library.ts');
+      const extracted = unzip(zipBuf);
+      assert.ok(extracted.has('index.html'));
+      assert.equal(extracted.has('game.json'), false);
+
       // 3. Invalid targetKind & unknown game map to 400 / 404
       const badKindRes = await fetch(`${origin}/motion-api/web-publish/unknown-kind/abc`);
       assert.equal(badKindRes.status, 400);
@@ -361,6 +372,38 @@ test('Unified /motion-api/web-publish HTTP routes and Streamable HTTP openmotion
       };
       assert.equal(parsedGameStatus.targetKind, 'game');
       assert.equal(parsedGameStatus.targetId, createdGame.id);
+
+      // Validated MCP adapter accepts embedUrl for community games
+      const mcpEmbedStatus = await mcpRpc(
+        writeToken,
+        {
+          jsonrpc: '2.0',
+          id: 4,
+          method: 'tools/call',
+          params: {
+            name: 'openmotion_assets_use',
+            arguments: {
+              action: 'web_publish',
+              webPublish: {
+                command: 'status',
+                targetKind: 'game',
+                targetId: 'community-demo',
+                embedUrl: 'https://example.com/play/',
+                title: 'Community Demo',
+              },
+            },
+          },
+        },
+        initWrite.sessionId,
+      );
+      assert.equal(mcpEmbedStatus.payload.error, undefined);
+      assert.notEqual(mcpEmbedStatus.payload.result?.isError, true);
+      const parsedEmbedStatus = JSON.parse(mcpEmbedStatus.payload.result.content[0].text) as {
+        targetKind: string;
+        targetId: string;
+      };
+      assert.equal(parsedEmbedStatus.targetKind, 'game');
+      assert.equal(parsedEmbedStatus.targetId, 'community-demo');
 
       // Read-scoped token cannot call openmotion_assets_use action=web_publish
       const initRead = await mcpRpc(readToken, {
@@ -669,5 +712,143 @@ test('WebPublish stops previous slug on new_link rotation and allows unpublish/s
   assert.ok(
     calls.some(c => c.args[0] === 'share' && c.args[1] === 'stop' && c.args[2] === rotated.publication.slug),
     'unpublish after project deletion must call share stop on the persisted slug',
+  );
+}));
+
+test('WebPublish deploys embeddable community games via an OpenDesign Cloud wrapper and rejects non-https embedUrl', () => fixture(async store => {
+  const { resolveWebPublishTarget, webPublishOperation } = await import('../gateway/web-publish-ops.ts');
+  const { client } = createMockWebPublishAccount();
+  const service = new WebPublishService(store.directory, client);
+
+  // 1. Valid https embedUrl stages a cached wrapper outside games/ and publishes to OpenDesign Cloud
+  const target = await resolveWebPublishTarget(
+    store,
+    {
+      targetKind: 'game',
+      targetId: 'community-turbo-kart',
+      embedUrl: 'https://bridge-mind.github.io/turbo-kart-rally/',
+      title: 'Turbo Kart Rally',
+    },
+    'http://127.0.0.1:4173',
+  );
+  assert.equal(target.kind, 'game');
+  assert.equal(target.id, 'community-turbo-kart');
+  assert.equal(target.entryPath, 'index.html');
+  assert.ok(target.sourcePath.includes(path.join('web-publish-cache', 'games', 'community-turbo-kart')));
+
+  const wrapperHtml = await readFile(path.join(target.sourcePath, 'index.html'), 'utf8');
+  assert.ok(wrapperHtml.includes('src="https://bridge-mind.github.io/turbo-kart-rally/"'));
+  assert.ok(wrapperHtml.includes('<title>Turbo Kart Rally · OpenDesign</title>'));
+  assert.ok(wrapperHtml.includes('sandbox="allow-scripts allow-same-origin allow-pointer-lock"'));
+  assert.equal(wrapperHtml.includes('clipboard-write'), false);
+
+  // Must not pollute local user GameProjects catalog
+  const games = new GameProjects(store.directory);
+  const catalog = await games.catalog();
+  assert.equal(catalog.games.some(item => item.id === 'community-turbo-kart'), false);
+
+  const published = (await webPublishOperation(
+    store,
+    {
+      command: 'publish',
+      targetKind: 'game',
+      targetId: 'community-turbo-kart',
+      embedUrl: 'https://bridge-mind.github.io/turbo-kart-rally/',
+      title: 'Turbo Kart Rally',
+    },
+    'http://127.0.0.1:4173',
+    service,
+  )) as any;
+  assert.equal(published.publication.status, 'published');
+  assert.ok(published.url?.startsWith('https://open-design.app/artifact/'));
+
+  // 2. Subsequent status & unpublish work from the cached wrapper even without re-sending embedUrl
+  const statusAfter = (await webPublishOperation(
+    store,
+    { command: 'status', targetKind: 'game', targetId: 'community-turbo-kart' },
+    'http://127.0.0.1:4173',
+    service,
+  )) as any;
+  assert.equal(statusAfter.active?.url, published.url);
+  assert.equal(statusAfter.freshness, 'fresh');
+
+  // 2b. Status with embedUrl and omitted title stays read-only and preserves wrapper title & freshness
+  const statusWithEmbedNoTitle = (await webPublishOperation(
+    store,
+    {
+      command: 'status',
+      targetKind: 'game',
+      targetId: 'community-turbo-kart',
+      embedUrl: 'https://bridge-mind.github.io/turbo-kart-rally/',
+    },
+    'http://127.0.0.1:4173',
+    service,
+  )) as any;
+  assert.equal(statusWithEmbedNoTitle.active?.url, published.url);
+  assert.equal(statusWithEmbedNoTitle.freshness, 'fresh');
+  const wrapperAfterStatus = await readFile(path.join(target.sourcePath, 'index.html'), 'utf8');
+  assert.ok(wrapperAfterStatus.includes('<title>Turbo Kart Rally · OpenDesign</title>'));
+
+  // 2c. Status with a changed embedUrl reports outdated without rewriting the cached wrapper on disk
+  const statusChangedEmbed = (await webPublishOperation(
+    store,
+    {
+      command: 'status',
+      targetKind: 'game',
+      targetId: 'community-turbo-kart',
+      embedUrl: 'https://bridge-mind.github.io/turbo-kart-rally-v2/',
+      title: 'Turbo Kart Rally',
+    },
+    'http://127.0.0.1:4173',
+    service,
+  )) as any;
+  assert.equal(statusChangedEmbed.freshness, 'outdated');
+  const wrapperAfterChangedEmbed = await readFile(path.join(target.sourcePath, 'index.html'), 'utf8');
+  assert.equal(wrapperAfterChangedEmbed, wrapperAfterStatus);
+  assert.ok(wrapperAfterChangedEmbed.includes('https://bridge-mind.github.io/turbo-kart-rally/'));
+  assert.ok(!wrapperAfterChangedEmbed.includes('turbo-kart-rally-v2'));
+
+  // 3. Non-https and credential-bearing embedUrl values are rejected
+  await assert.rejects(
+    () =>
+      resolveWebPublishTarget(
+        store,
+        {
+          targetKind: 'game',
+          targetId: 'community-bad-proto',
+          embedUrl: 'javascript:alert(1)',
+          title: 'Bad Game',
+        },
+        'http://127.0.0.1:4173',
+      ),
+    /GAME_NOT_FOUND|not found/i,
+  );
+  await assert.rejects(
+    () =>
+      resolveWebPublishTarget(
+        store,
+        {
+          targetKind: 'game',
+          targetId: 'community-http-local',
+          embedUrl: 'http://127.0.0.1:8080/game',
+          title: 'Insecure Local Game',
+        },
+        'http://127.0.0.1:4173',
+      ),
+    /GAME_NOT_FOUND|not found/i,
+  );
+  await assert.rejects(
+    () =>
+      resolveWebPublishTarget(
+        store,
+        {
+          targetKind: 'game',
+          targetId: 'community-creds-url',
+          embedUrl: 'https://user:pass@example.com/private-game/',
+          title: 'Private Preview Game',
+        },
+        'http://127.0.0.1:4173',
+      ),
+    /GAME_NOT_FOUND|not found/i,
   );
 }));
