@@ -214,8 +214,17 @@ export async function snapshotExportExpectationIsolated(
   const document = parseHTMLContent(await readFile(path.join(directory, compositionPath), 'utf8'));
   const attribute = (element: Element, name: string) =>
     Array.from(element.attributes).find((item) => item.name.toLowerCase() === name)?.value;
-  const compositions = Array.from(document.querySelectorAll('*')) as Element[];
-  const roots = compositions.filter((element) => attribute(element, 'data-composition-id') !== undefined);
+  const compositionsIn = (scope: ParentNode) =>
+    (Array.from(scope.querySelectorAll('*')) as Element[]).filter(
+      (element) => attribute(element, 'data-composition-id') !== undefined,
+    );
+  // A scene file wraps its composition in a <template>. A document does not list what a
+  // template holds, so read it where the renderer does: the first template's content.
+  let roots = compositionsIn(document);
+  if (!roots.length) {
+    const template = document.querySelector('template') as HTMLTemplateElement | null;
+    if (template?.content) roots = compositionsIn(template.content);
+  }
   const root = roots.find((element) => attribute(element, 'data-root') === 'true') || roots[0];
   if (!root) throw new Error('Export snapshot is missing a root composition');
   const fps = parseFps(attribute(root, 'data-fps')?.trim() || '30');

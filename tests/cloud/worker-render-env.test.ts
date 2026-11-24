@@ -1,11 +1,16 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { describe, it } from 'node:test';
-import { executeIsolated } from '../../hyperframes.ts';
+import {
+  executeIsolated,
+  pluginRoot,
+  snapshotExportExpectation,
+  snapshotExportExpectationIsolated,
+} from '../../hyperframes.ts';
 import type { RenderWorkerHealth } from '../../src/contracts/events.ts';
 import type { StoragePort } from '../../src/contracts/storage.ts';
 import type { Database } from '../../src/db/client.ts';
@@ -515,6 +520,113 @@ describe('worker-render: CLI Argument Builders (hyperframes@0.9.7 snapshot & ren
       '0',
       '--json',
     ]);
+  });
+});
+
+describe('worker-render: Export Expectation Read From A Scene File (compositionPath)', () => {
+  it('reads a scene whose composition is wrapped in a template, and still rejects a file with no composition', async () => {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'om-test-scene-expectation-'));
+    try {
+      const env = buildRenderSubprocessEnv({
+        ephemeralHomeDir: path.join(tmpDir, 'home'),
+        ephemeralTmpDir: path.join(tmpDir, 'tmp'),
+      });
+      // The render worker reads the expectation with the isolated reader; the other reader shares its rules.
+      const readers = [
+        {
+          read: () => snapshotExportExpectationIsolated(pluginRoot, tmpDir, 'compositions/intro.html', { env, timeoutMs: 60_000 }),
+          missing: /missing a root composition/,
+        },
+        {
+          read: () => snapshotExportExpectation(pluginRoot, tmpDir, 'compositions/intro.html'),
+          missing: /缺少根 composition/,
+        },
+      ];
+      const scene = (attributes: string, inner = 'Scene') =>
+        `<div id="intro" data-composition-id="intro" data-start="0" data-duration="4.5" data-width="640" data-height="360" ${attributes}>${inner}</div>`;
+      const write = async (content: string) => {
+        await mkdir(path.join(tmpDir, 'compositions'), { recursive: true });
+        await writeFile(path.join(tmpDir, 'compositions/intro.html'), content);
+      };
+      const expected = { width: 640, height: 360, fps: 24, duration: 4.5, audio: 'optional' };
+      const aside =
+        '<template><div data-composition-id="aside" data-duration="9" data-width="64" data-height="36"></div></template>';
+      for (const { read, missing } of readers) {
+        // The form scene files are saved in: styles, then the composition, inside one template.
+        await write(`<template>\n<style>#intro{position:absolute;inset:0}</style>\n${scene('data-fps="24"')}\n</template>`);
+        assert.deepEqual(await read(), expected);
+        await write(
+          `<template>${scene('', '<div data-composition-id="card" data-duration="1" data-width="64" data-height="36"></div>')}</template>`,
+        );
+        assert.deepEqual(await read(), { ...expected, fps: 30 });
+        // A scene saved as a whole document keeps its own composition; a template beside it is not the scene.
+        await write(`<!doctype html><html><body>${aside}${scene('data-fps="24"')}</body></html>`);
+        assert.deepEqual(await read(), expected);
+        await write('<template><p>No composition here</p></template>');
+        await assert.rejects(read(), missing);
+        await write('<p>No composition here</p>');
+        await assert.rejects(read(), missing);
+      }
+    } finally {
+      await rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('verifies a scene export against the expectation read from its template-wrapped file', async () => {
+    const tmpBase = await mkdtemp(path.join(os.tmpdir(), 'om-test-render-scene-'));
+    try {
+      const storage = new MemoryStorage();
+      const scene =
+        '<template>\n<style>#intro{position:absolute;inset:0}</style>\n<div id="intro" data-composition-id="intro" data-start="0" data-duration="4.5" data-width="640" data-height="360" data-fps="24">Scene</div>\n</template>';
+      await storage.putObject(workspaceBlobKey(WID_A, sha256(scene)), scene, 'text/html');
+      const fakeMp4 = Buffer.concat([Buffer.from([0, 0, 0, 20]), Buffer.from('ftypisom'), Buffer.alloc(64, 7)]);
+      const verified: unknown[] = [];
+      // No expectation is supplied with the job and none is stubbed, so the worker reads it from the scene file.
+      const result = await processExportRenderJob(
+        {
+          db: createFakeRenderDb(
+            [{ path: 'compositions/intro.html', blobScope: 'workspace', sha256: sha256(scene), sizeBytes: scene.length, mimeType: 'text/html' }],
+            () => [{ id: JID_OK }],
+          ),
+          storage,
+          eventBus: new MemoryEventBus(),
+          logger: SILENT_LOGGER,
+          workerId: 'render-test-scene',
+          tmpBaseDir: tmpBase,
+          runRenderCommand: async (_rt, _dir, args) => {
+            await writeFile(args[args.indexOf('--output') + 1], fakeMp4);
+            return { code: 0, stdout: '{"ok":true}\n', stderr: '' };
+          },
+          verifyExportFn: async (outFile, expected) => {
+            verified.push(expected);
+            return {
+              scope: 'technical',
+              status: 'passed',
+              file: outFile,
+              sha256: sha256(fakeMp4),
+              expected,
+              checks: [{ name: 'probe', status: 'passed', details: 'ok' }],
+              remainingChecks: [],
+            };
+          },
+        },
+        {
+          jobId: JID_OK,
+          workspaceId: WID_A,
+          projectId: PID_A,
+          versionId: VID_A,
+          revision: REV_1,
+          compositionPath: 'compositions/intro.html',
+          outputName: 'intro.mp4',
+          format: 'mp4',
+          phase1: true,
+        },
+      );
+      assert.equal(result.state, 'completed');
+      assert.deepEqual(verified, [{ width: 640, height: 360, fps: 24, duration: 4.5, audio: 'optional' }]);
+    } finally {
+      await rm(tmpBase, { recursive: true, force: true });
+    }
   });
 });
 
