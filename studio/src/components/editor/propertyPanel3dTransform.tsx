@@ -1,3 +1,4 @@
+import { Button } from "open-design-ui/button";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
 import { useState } from "react";
@@ -322,7 +323,7 @@ export function PropertyPanel3dTransform({
 
   return (
     <div className="mt-3 border-t border-neutral-800/40 pt-3">
-      <button
+      <Button variant="plain"
         type="button"
         onClick={() => setCollapsed((v) => !v)}
         aria-expanded={!collapsed}
@@ -330,7 +331,7 @@ export function PropertyPanel3dTransform({
       >
         <span>{t("3D Transform")}</span>
         <RemixIcon name="arrow-down-s-fill" size={9} className={`transition-transform duration-150 ${collapsed ? "-rotate-90" : ""}`} />
-      </button>
+      </Button>
       {collapsed ? null : (
         <>
           {onCommitAnimatedProperties && (

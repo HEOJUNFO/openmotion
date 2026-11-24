@@ -1,3 +1,4 @@
+import { IconButton } from "open-design-ui/icon-button";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { useI18n } from "../../i18n/I18n";
 import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
@@ -226,7 +227,7 @@ function ToolbarToggle({
   underline?: boolean;
 }) {
   return (
-    <button
+    <IconButton variant="plain"
       type="button"
       title={label}
       aria-label={label}
@@ -240,9 +241,8 @@ function ToolbarToggle({
         textDecoration: underline ? "underline" : "none",
       }}
       onClick={() => onToggle(!on)}
-    >
-      {glyph}
-    </button>
+      icon={glyph}
+    />
   );
 }
 

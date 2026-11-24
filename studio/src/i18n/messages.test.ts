@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { dictionaries, languages, translate, mvpMessages, isKnownMessage, sourceMessage } from './messages';
+import { languages, translate, isKnownMessage, sourceMessage } from './messages';
+import { dictionaries, mvpMessages } from './sourceCatalog';
 import mvpUi from './mvp-ui.json';
 import errorUi from './error-ui.json';
 import settingsUi from './settings-ui.json';
 import templateUi from './template-ui.json';
 import mcpUi from './mcp-ui.json';
 import studioNavigationUi from './studio-navigation-ui.json';
-import { mcpFaq } from '../motion/mcpCapabilities';
+import editorLoadingUi from './editor-loading-ui.json';
+import { mcpCapabilities, mcpFaq } from '../motion/mcpCapabilities';
 import { creativeStudios } from '../../../shared/studio-catalog';
 import { errorNoticeMessage } from '../components/ui/errorNoticeMessage';
 import { historyEntryLabel } from './historyMessages';
@@ -21,12 +23,60 @@ describe('editor language resources', () => {
       for (const [message, translation] of Object.entries(entries)) {
         expect(translation.trim(), `${locale}: ${message}`).not.toBe('');
         expect(translation.match(/openmotion_\w+/g) ?? []).toEqual(message.match(/openmotion_\w+/g) ?? []);
+        const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map(match => match[1]).sort();
+        expect(placeholders(translation), `${locale}: ${message}`).toEqual(placeholders(message));
       }
       for (const label of [...creativeStudios.map(studio => studio.title), 'More Studio']) {
         const translated = translate(locale, label);
         expect(translated.trim(), `${locale}: ${label}`).not.toBe('');
         expect(translated, `${locale}: ${label}`).not.toBe(label);
       }
+    }
+  });
+
+  it('keeps studio-navigation-ui free of untranslated English placeholders, clobbered base keys, and superseded playstyle keys', () => {
+    // Only true brand terms and verified target-language cognates may match the English source key.
+    const allowedIdentical: Record<string, Set<string>> = {
+      '*': new Set(['OpenDesign API Key']),
+      de: new Set(['Studios', 'Transparent', 'Details', 'Workflows', 'Inpaint']),
+      fr: new Set(['Studios', 'Transparent']),
+      es: new Set(['Popular', 'Roles']),
+      'pt-BR': new Set(['Popular', 'Zoom 100%']),
+    };
+    const supersededKeys = [
+      'Text to image', 'Character consistency', 'Multi-shot narrative', 'Extend video',
+      'Shot reference', 'Multi-image fusion', 'Inpainting', '4K Upscale',
+      'Batch set', 'Lipsync', '4K video upscale', 'Keyframes',
+    ];
+    for (const { locale } of languages) {
+      if (locale === 'en') continue;
+      const entries = studioNavigationUi[locale];
+      const base = dictionaries[locale];
+      for (const dead of supersededKeys) {
+        expect(Object.hasOwn(entries, dead), `${locale}: superseded key ${dead}`).toBe(false);
+      }
+      for (const [message, translation] of Object.entries(entries)) {
+        const permitted = allowedIdentical['*'].has(message) || Boolean(allowedIdentical[locale]?.has(message));
+        if (!permitted) {
+          expect(translation, `${locale}: untranslated "${message}"`).not.toBe(message);
+        }
+        // Never allow an untranslated English placeholder to overwrite a translated base dictionary entry.
+        const baseValue = base[message];
+        if (typeof baseValue === 'string' && baseValue !== message) {
+          expect(translation, `${locale}: clobbered base "${message}"`).not.toBe(message);
+        }
+      }
+      // Verify prompt-only history action resolves to studio-navigation-ui rather than a dead Sound Studio override.
+      expect(translate(locale, 'Reuse prompt'), `${locale}: Reuse prompt`).toBe(entries['Reuse prompt']);
+    }
+  });
+
+  it('localizes the component placement example and preserves the public field names', () => {
+    const prompt = mcpCapabilities.find(item => item.id === 'motion-components')!.prompt;
+    for (const { locale } of languages.filter(language => language.locale !== 'en')) {
+      const translation = translate(locale, prompt);
+      expect(translation, locale).not.toBe(prompt);
+      for (const field of ['hostFile', 'baseVersion', 'compositionFile']) expect(translation, locale).toContain(field);
     }
   });
 
@@ -38,6 +88,13 @@ describe('editor language resources', () => {
       expect(messages[answer]?.trim(), locale).toBeTruthy();
       expect(translate(locale, answer), locale).toBe(messages[answer]);
       expect(translate(locale, answer), locale).not.toBe(answer);
+    }
+  });
+
+  it('localizes the storyboard review FAQ in every supported non-English locale', () => {
+    const entry = mcpFaq.find(([question]) => question === 'How do I review a storyboard or creative direction?')!;
+    for (const { locale } of languages.filter(language => language.locale !== 'en')) {
+      for (const message of entry) expect(translate(locale, message), locale).not.toBe(message);
     }
   });
 
@@ -180,5 +237,37 @@ it('localizes audited controls and history without translating authored names', 
     expect(historyEntryLabel('Undid: Move timeline clips', t)).toContain(t('Move timeline clips'));
     expect(historyEntryLabel('Add block: My Custom Title', t)).toContain('My Custom Title');
     expect(historyEntryLabel('My authored version name', t)).toBe('My authored version name');
+  }
+});
+
+it('keeps editor asset-loading messages complete and placeholder-safe across all locales', () => {
+  const keys = Object.keys(editorLoadingUi['zh-CN']).sort();
+  for (const { locale } of languages) {
+    if (locale === 'en') continue;
+    const entries = editorLoadingUi[locale];
+    expect(Object.keys(entries).sort(), locale).toEqual(keys);
+    for (const [source, translation] of Object.entries(entries)) {
+      expect(translation.trim(), `${locale}: ${source}`).not.toBe('');
+      if (locale === 'zh-CN') expect(translation, source).not.toContain('工程');
+      const placeholders = (text: string) => [...text.matchAll(/\{\w+\}/g)].map(m => m[0]).sort();
+      expect(placeholders(translation), `${locale}: ${source}`).toEqual(placeholders(source));
+    }
+  }
+});
+
+it('localizes Cloud P2 notices for Game Studio and Workflows in all non-English locales', () => {
+  const notices = [
+    'Game Studio is coming in Phase 2.',
+    'Game Studio requires local game runtime tools and is scheduled for Phase 2 in OpenMotion Cloud.',
+    'Workflows are coming in Phase 2.',
+    'Scenario workflows are scheduled for Phase 2 in OpenMotion Cloud.',
+  ];
+  for (const { locale } of languages) {
+    if (locale === 'en') continue;
+    for (const key of notices) {
+      const translated = translate(locale, key);
+      expect(translated.trim(), `${locale}: ${key}`).not.toBe('');
+      expect(translated, `${locale}: ${key}`).not.toBe(key);
+    }
   }
 });

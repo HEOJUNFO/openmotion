@@ -48,7 +48,7 @@ export const workflowRegistry = {
       examples: 'skills/openmotion-director/references/examples.md',
     },
   },
-  template: { status: 'ready', sections: { start: 'skills/openmotion-template-to-video/SKILL.md', unchanged: 'skills/openmotion-template-to-video/references/unchanged-export.md', firstuse: 'skills/openmotion-template-to-video/references/first-use.md', recipes: 'skills/openmotion-template-to-video/references/recipes.md' } },
+  template: { status: 'ready', sections: { start: 'skills/openmotion-template-to-video/SKILL.md', unchanged: 'skills/openmotion-template-to-video/references/unchanged-export.md', firstuse: 'skills/openmotion-template-to-video/references/first-use.md', recipes: 'skills/openmotion-template-to-video/references/recipes.md', adaptation: 'skills/openmotion-template-to-video/references/adaptation.md' } },
   recreate: {
     status: 'ready',
     sections: {
@@ -85,6 +85,18 @@ export const workflowRegistry = {
       opendesign: 'skills/openmotion-media/references/providers/opendesign.md',
       atlascloud: 'skills/openmotion-media/references/providers/atlascloud.md',
       wavespeed: 'skills/openmotion-media/references/providers/wavespeed.md',
+      codex: 'skills/openmotion-media/references/providers/codex.md',
+    },
+  },
+  game: { status: 'ready', sections: { start: 'skills/openmotion-game/SKILL.md', provenance: 'skills/openmotion-game/PROVENANCE.md', genres: 'skills/openmotion-game/references/game-genres.md', playable: 'skills/openmotion-game/references/game-playable-ad.md', flow: 'skills/openmotion-game/references/game-flow.md', design: 'skills/openmotion-game/references/game-design-system.md', style: 'skills/openmotion-game/references/game-stylization.md', sprites: 'skills/openmotion-game/references/game-2d-animation.md', animation: 'skills/openmotion-game/references/game-3d-animation.md', procedural: 'skills/openmotion-game/references/game-procedural-animation.md', audio: 'skills/openmotion-game/references/game-audio.md', textures: 'skills/openmotion-game/references/game-textures.md', review: 'skills/openmotion-game/references/review-rubric.md' } },
+  design: {
+    status: 'ready',
+    sections: {
+      start: 'skills/openmotion-design/SKILL.md',
+      scenarios: 'skills/openmotion-design/references/scenarios.md',
+      iterate: 'skills/openmotion-design/references/iterate.md',
+      export: 'skills/openmotion-design/references/export.md',
+      systems: 'skills/openmotion-design/references/systems.md',
     },
   },
 } as const;
@@ -93,9 +105,9 @@ export const workflowRegistry = {
 export const workflowFiles = workflowRegistry.production.sections;
 export const workflowNames = Object.keys(workflowRegistry);
 export const workflowSections = [...new Set(Object.values(workflowRegistry).flatMap(workflow => Object.keys(workflow.sections)))];
-export const phase1WorkflowNames = ['production', 'director', 'template', 'recreate', 'video-to-template', 'media'];
+export const phase1WorkflowNames = ['production', 'director', 'template', 'recreate', 'video-to-template', 'media', 'design'];
 export const phase1Skills = ['openmotion-production', 'openmotion-director', 'openmotion-template-to-video', 'openmotion-recreate', 'openmotion-video-to-template'];
-export const supportingSkills = ['openmotion-media'];
+export const supportingSkills = ['openmotion-media', 'openmotion-design'];
 export const packagedSkills = [...phase1Skills, ...supportingSkills];
 export function workflowResources() {
   return Object.entries(workflowRegistry).filter(([name]) => phase1WorkflowNames.includes(name)).flatMap(([workflow, definition]) => Object.keys(definition.sections).map(section => ({
@@ -114,15 +126,23 @@ export async function resolveGuideFile(root: string, relative: string) {
   return file;
 }
 
-export async function readWorkflowResource(uri: unknown, dataDirectory: string) {
+export async function readWorkflowResource(uri: unknown, dataDirectory = '') {
   if (typeof uri !== 'string') throw new Error('INVALID_RESOURCE_URI');
   if (/^(?:openmotion|motion):\/\/fonts\//.test(uri)) return { uri, mimeType: 'application/json', text: JSON.stringify(await fontCatalogResource(uri)) };
   const match = /^(?:openmotion|motion):\/\/workflow\/([a-z]+(?:-[a-z]+)*)\/([a-z]+)$/.exec(uri);
   if (match && phase1WorkflowNames.includes(match[1])) return { uri, mimeType: 'application/json', text: JSON.stringify({ ...await getWorkflow(match[2], match[1]), workflows: phase1WorkflowNames }) };
   const engine = /^(?:openmotion|motion):\/\/engine\/([a-zA-Z0-9_/-]+\.md)$/.exec(uri);
   if (!engine) throw new Error('INVALID_RESOURCE_URI');
-  const { ensureRuntime } = await import('../hyperframes.ts');
-  const root = await realpath(path.join(await ensureRuntime(dataDirectory, false), 'node_modules/hyperframes/dist/skills/hyperframes'));
+  // In container/cloud deployments, resolve Hyperframes guide directly from app node_modules without local runtime bootstrapping.
+  let root: string | null = await realpath(fileURLToPath(new URL('../node_modules/hyperframes/dist/skills/hyperframes', import.meta.url))).catch(() => null);
+  if (!root && dataDirectory) {
+    const legacyRuntimeModule = '../hyperframes' + '.ts';
+    const { ensureRuntime } = (await import(legacyRuntimeModule)) as {
+      ensureRuntime(dir: string, install?: boolean): Promise<string>;
+    };
+    root = await realpath(path.join(await ensureRuntime(dataDirectory, false), 'node_modules/hyperframes/dist/skills/hyperframes'));
+  }
+  if (!root) throw new Error('INVALID_RESOURCE_URI');
   const file = await resolveGuideFile(root, engine[1]);
   return { uri, mimeType: 'text/markdown', text: await readFile(file, 'utf8').catch(() => { throw new Error('INVALID_RESOURCE_URI'); }) };
 }

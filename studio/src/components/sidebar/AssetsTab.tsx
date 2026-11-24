@@ -1,6 +1,9 @@
+import { Button } from 'open-design-ui/button';
+import { FileListLoading } from "./FileListLoading";
 import { AssetImportMenu } from '../../motion/AssetLibraryImport';
 import { useFileManagerContextOptional } from '../../contexts/FileManagerContext';
 import { ManualImportResults } from './ManualImportResults';
+import { PendingExternalImports } from './PendingExternalImports';
 import { RemixIcon } from "../../icons/RemixIcons";
 import { clickOption, searchStarted, trackStudioClick } from "../../motion/editorTracking";
 import { useMvpEditor } from "../../motion/StudioHost";
@@ -33,6 +36,7 @@ import type { FileTreeRefreshOptions } from '../../hooks/useFileTree';
 interface AssetsTabProps {
   projectId: string;
   assets: string[];
+  loading?: boolean;
   assetNames?: Record<string, string>;
   onImport?: (files: FileList, entryPoint?: "assets_button" | "assets_drop") => void | Promise<void>;
   onLibraryImport?: (options: FileTreeRefreshOptions) => Promise<void>;
@@ -106,12 +110,12 @@ function EmptyState({
         <p className="text-[11px] text-neutral-500 text-center">
           {t("No assets match “")}{searchQuery}&rdquo;
         </p>
-        <button
+        <Button variant="plain"
           type="button"
           onClick={onClearSearch}
           className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-panel-input text-panel-text-3 hover:text-panel-text-1 active:scale-[0.98] transition-colors"
         >
-          {t("Clear search")}</button>
+          {t("Clear search")}</Button>
       </div>
     );
   }
@@ -128,6 +132,7 @@ function EmptyState({
 export const AssetsTab = memo(function AssetsTab({
   projectId,
   assets,
+  loading,
   assetNames,
   onImport,
   onLibraryImport,
@@ -277,7 +282,7 @@ export const AssetsTab = memo(function AssetsTab({
           />
           {onImport && <AssetImportMenu projectId={projectId} importing={importing || Boolean(importBatch?.busy)} onUpload={() => fileInputRef.current?.click()} onImported={onLibraryImport ? handleLibraryImport : undefined} />}
         </div>
-        {!mvp && onImport && mediaGateway && <button className="motion-asset-generate" onClick={event => mediaGateway.openGenerator({ anchor: mediaPopoverAnchor(event.currentTarget) })}>{t("Generate media")}</button>}
+        {!mvp && onImport && mediaGateway && <Button variant="plain" className="motion-asset-generate" onClick={event => mediaGateway.openGenerator({ anchor: mediaPopoverAnchor(event.currentTarget) })}>{t("Generate media")}</Button>}
         {onImport && (
           <input
             ref={fileInputRef}
@@ -328,6 +333,14 @@ export const AssetsTab = memo(function AssetsTab({
         data-assets-list
         ref={listRef}
       >
+        {fileManager && fileManager.pendingImports.length > 0 && (
+          <PendingExternalImports
+            items={fileManager.pendingImports.filter(
+              (item) => !(importBatch?.busy && item.source === "web_upload"),
+            )}
+            onDismiss={fileManager.dismissPendingImport}
+          />
+        )}
         {importBatch && fileManager && <ManualImportResults
           key={importBatch.id}
           batch={importBatch}
@@ -342,14 +355,14 @@ export const AssetsTab = memo(function AssetsTab({
             setLatestImport({ projectId, path });
           } : undefined}
         />}
-        {mediaAssets.length === 0 ? (
+        {loading && !assets.length ? <FileListLoading /> : mediaAssets.length === 0 ? (
           <EmptyState searchQuery={searchQuery} onClearSearch={() => setSearchQuery("")} />
         ) : (
           visibleCategories.map((cat) => (
             <div key={cat} className="mb-1" data-assets-category={cat}>
               {activeFilter === "all" && (
                 <h3>
-                  <button
+                  <Button variant="plain"
                     type="button"
                     className="om-nav-item flex w-full items-center gap-2 px-2 py-1.5 text-left"
                     aria-expanded={!collapsedCategories.has(cat)}
@@ -364,7 +377,7 @@ export const AssetsTab = memo(function AssetsTab({
                     <RemixIcon name={collapsedCategories.has(cat) ? "arrow-right-s-line" : "arrow-down-s-line"} size={14} />
                     <span className="text-[12px] font-semibold text-panel-text-1">{t(CATEGORY_LABELS[cat])}</span>
                     <span className="text-[11px] text-panel-text-5">{categorized[cat].length}</span>
-                  </button>
+                  </Button>
                 </h3>
               )}
               <div id={`${groupId}-${cat}`} hidden={collapsedCategories.has(cat)}>
@@ -380,6 +393,7 @@ export const AssetsTab = memo(function AssetsTab({
                           onRevealUsage={reveal}
                           displayName={assetNames?.[a]}
                           used={usedPaths.has(a)}
+                          optimizing={fileManager?.assetMetadata?.[a]?.optimizationStatus === "optimizing"}
                           meta={manifest.get(a)}
                           onCopy={handleCopyPath}
                           copyFeedback={copyFeedback}
@@ -390,21 +404,25 @@ export const AssetsTab = memo(function AssetsTab({
                       ))}
                     {(cat === "images" || cat === "video") && (
                       <div className="hf-media-card-grid pb-1">
-                        {categorized[cat].map((a) => (
-                          <AssetCard
-                            key={a}
-                            projectId={projectId}
-                            asset={a}
-                            displayName={assetNames?.[a]}
-                            used={usedPaths.has(a)}
-                            duration={manifest.get(a)?.duration}
-                            onCopy={handleCopyPath}
-                            copyFeedback={copyFeedback}
-                            onDelete={onDelete}
-                            onRename={onRename}
-                            onAddAssetToTimeline={onAddAssetToTimeline}
-                          />
-                        ))}
+                        {categorized[cat].map((a) => {
+                          const serverMeta = fileManager?.assetMetadata?.[a];
+                          return (
+                            <AssetCard
+                              key={a}
+                              projectId={projectId}
+                              asset={a}
+                              displayName={assetNames?.[a]}
+                              used={usedPaths.has(a)}
+                              duration={manifest.get(a)?.duration ?? serverMeta?.duration}
+                              optimizing={serverMeta?.optimizationStatus === "optimizing"}
+                              onCopy={handleCopyPath}
+                              copyFeedback={copyFeedback}
+                              onDelete={onDelete}
+                              onRename={onRename}
+                              onAddAssetToTimeline={onAddAssetToTimeline}
+                            />
+                          );
+                        })}
                       </div>
                     )}
                     {cat === "fonts" &&

@@ -1,3 +1,4 @@
+import { Button } from "open-design-ui/button";
 import { OverflowText } from "../ui/OverflowText";
 import { NativeSelect } from "../ui/FormField";
 import { RemixIcon } from "../../icons/RemixIcons";
@@ -231,7 +232,7 @@ export function SegmentedControl({
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
     >
       {options.map((option) => (
-        <button
+        <Button variant="plain"
           key={option.value}
           type="button"
           disabled={disabled}
@@ -247,7 +248,7 @@ export function SegmentedControl({
           }`}
         >
           {t(option.label)}
-        </button>
+        </Button>
       ))}
     </div>
   );
@@ -315,7 +316,7 @@ export function Section({
     <DesignPanelInputProvider section={section}>
       <section className="min-w-0 border-t border-panel-border" data-panel-section={section}>
         <div className="flex w-full items-center gap-2 px-4 py-2.5">
-          <button
+          <Button variant="plain"
             type="button"
             onClick={() => setCollapsed((v) => !v)}
             aria-expanded={!collapsed}
@@ -323,7 +324,7 @@ export function Section({
           >
             <h3 className="text-[12px] font-semibold text-panel-text-1">{t(title)}</h3>
             {collapseIcon}
-          </button>
+          </Button>
           {accessory && <div className="flex shrink-0 items-center">{accessory}</div>}
         </div>
         {!collapsed && <div className="px-4 pb-3">{children}</div>}

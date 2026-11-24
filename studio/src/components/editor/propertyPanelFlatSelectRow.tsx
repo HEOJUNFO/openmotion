@@ -1,3 +1,4 @@
+import { IconButton } from "open-design-ui/icon-button";
 import { NativeSelect } from "../ui/FormField";
 import { Select } from "../ui/Select";
 import { PropertyLabel } from "./PropertyLabel";
@@ -101,7 +102,7 @@ export function FlatSelectRow({
           <SelectArrow />
         </label>}
         {tier === "explicitCustom" && onReset && (
-          <button
+          <IconButton variant="plain" aria-label={t("Remove and fall back to default")}
             type="button"
             data-flat-select-reset="true"
             title={t("Remove and fall back to default")}
@@ -111,9 +112,8 @@ export function FlatSelectRow({
               onReset();
             }}
             className="shrink-0 text-panel-text-3 opacity-0 transition-opacity hover:text-panel-text-1 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <RotateCcw size={11} />
-          </button>
+            icon={<RotateCcw size={11} />}
+          />
         )}
       </span>
     </div>

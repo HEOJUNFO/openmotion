@@ -3,7 +3,11 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "paths": { "open-design-ui/*": ["../packages/design-system/components/*"] },
+    "paths": {
+      "open-design-ui/*": ["../packages/open-design-ui/*"],
+      "@openmotion/observability": ["../packages/observability/index.ts"],
+      "@openmotion/observability/*": ["../packages/observability/*.ts"]
+    },
     "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,
@@ -26,7 +30,7 @@
   },
   "include": [
     "src",
-    "../packages/design-system/components/site/**/*.tsx"
+    "../packages/open-design-ui/site/**/*.tsx"
   ],
   "exclude": [
     "build",

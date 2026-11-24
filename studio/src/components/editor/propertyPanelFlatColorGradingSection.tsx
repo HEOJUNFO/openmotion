@@ -1,3 +1,5 @@
+import { Button } from "open-design-ui/button";
+import { IconButton } from "open-design-ui/icon-button";
 import { NativeSelect } from "../ui/FormField";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
@@ -210,12 +212,12 @@ export function FlatColorGradingSection({
       />
       <div data-flat-grade-presets="true" className="space-y-1.5">
         {presetPreviews.status === "unavailable" && (
-          <button
+          <Button variant="plain"
             type="button"
             onClick={onRequestPresetPreviews}
             className="text-[10px] font-medium text-accent-ink hover:text-accent-ink/80"
           >
-            {t("Retry look previews")}</button>
+            {t("Retry look previews")}</Button>
         )}
         <div data-flat-grade-preset-group="presets" className={FLAT_PREVIEW_GRID}>
           {HF_COLOR_GRADING_GRADE_PRESETS.map((preset) => {
@@ -223,7 +225,7 @@ export function FlatColorGradingSection({
             const selected = grading.preset === preset.id;
             const preview = presetPreviews.images[preset.id];
             return (
-              <button
+              <Button variant="plain"
                 key={preset.id}
                 type="button"
                 data-flat-grade-preset={preset.id}
@@ -264,7 +266,7 @@ export function FlatColorGradingSection({
                   )}
                 </span>
                 <span className="block truncate px-2 py-1.5">{label}</span>
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -372,7 +374,7 @@ export function FlatColorGradingSection({
       </div>
 
       <div className="border-t border-panel-hairline pt-1.5">
-        <button
+        <Button variant="plain"
           type="button"
           data-flat-grade-lut-toggle="true"
           onClick={() => setLutOpen((v) => !v)}
@@ -380,7 +382,7 @@ export function FlatColorGradingSection({
         >
           <span className="text-[11px] text-panel-text-2">{t("Custom LUT")}</span>
           <RemixIcon name="arrow-down-s-fill" size={10} className={`shrink-0 text-panel-text-5 transition-transform ${lutOpen ? "rotate-90" : ""}`} />
-        </button>
+        </Button>
         {lutOpen && (
           <div className="space-y-1.5 pb-1">
             <div className="flex items-center justify-between gap-2">
@@ -405,15 +407,14 @@ export function FlatColorGradingSection({
                   </option>
                 ))}
               </NativeSelect>
-              <button
+              <IconButton variant="plain" aria-label={t("Import .cube LUT")}
                 type="button"
                 disabled={!onImportAssets}
                 onClick={() => lutInputRef.current?.click()}
                 title={t("Import .cube LUT")}
                 className="shrink-0 text-panel-text-4 hover:text-panel-text-1 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <Plus size={12} />
-              </button>
+                icon={<Plus size={12} />}
+              />
               <input
                 ref={lutInputRef}
                 type="file"
@@ -448,27 +449,25 @@ export function FlatColorGradingSection({
           {t("Finish")}</div>
         <div className="flex items-center gap-1.5">
           <div className="flex-1">{renderDetailSlider("vignette")}</div>
-          <button
+          <IconButton variant="plain" aria-label={t("Vignette settings")}
             type="button"
             data-flat-grade-settings="vignette"
             title={t("Vignette settings")}
             onClick={() => setDetailSettingsOpen((c) => (c === "vignette" ? null : "vignette"))}
             className="shrink-0 text-panel-text-4 hover:text-panel-text-1"
-          >
-            <Settings size={12} />
-          </button>
+            icon={<Settings size={12} />}
+          />
         </div>
         <div className="flex items-center gap-1.5">
           <div className="flex-1">{renderDetailSlider("grain")}</div>
-          <button
+          <IconButton variant="plain" aria-label={t("Grain settings")}
             type="button"
             data-flat-grade-settings="grain"
             title={t("Grain settings")}
             onClick={() => setDetailSettingsOpen((c) => (c === "grain" ? null : "grain"))}
             className="shrink-0 text-panel-text-4 hover:text-panel-text-1"
-          >
-            <Settings size={12} />
-          </button>
+            icon={<Settings size={12} />}
+          />
         </div>
         {detailSettingsOpen && (
           <div className="space-y-0.5 border-l-2 border-panel-border-input pl-2.5">
@@ -496,7 +495,7 @@ export function FlatColorGradingSection({
               <option value="project">{t("All project media")}</option>
             </NativeSelect>
           </span>
-          <button
+          <Button variant="plain"
             type="button"
             data-flat-grade-apply="true"
             disabled={applyBusy}
@@ -507,7 +506,7 @@ export function FlatColorGradingSection({
             className="text-[11px] font-medium text-accent-ink hover:text-accent-ink/80 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {applyBusy ? t("Applying") : t("Apply")}
-          </button>
+          </Button>
         </div>
       )}
     </div>

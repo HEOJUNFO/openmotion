@@ -53,7 +53,7 @@ export function reportCardOpened(template: Template, placement: Extract<Placemen
     ...(source ? slugField('source_template_id', source.id) : {}), ...(source ? detail(view) : {}) });
 }
 
-export type DetailAction = Extract<Click['element'], 'view_guide' | 'back_to_template' | 'handoff_help' | 'copy_color' | 'back_to_project' | 'retry_template_project' | 'check_template_project' | 'open_prepared_project' | 'close_detail'>;
+export type DetailAction = Extract<Click['element'], 'view_guide' | 'back_to_template' | 'handoff_help' | 'copy_color' | 'retry_template_project' | 'check_template_project' | 'open_prepared_project' | 'close_detail'>;
 export function reportDetailAction(template: Template, element: DetailAction, view: DetailView | undefined) {
   send('ui_click', { ...studio, area: 'template_detail', element, ...templateId(template), ...resource(template), ...detail(view) });
 }

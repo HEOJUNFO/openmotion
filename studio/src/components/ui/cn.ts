@@ -1,1 +1,1 @@
-export { cn } from "../../../../packages/design-system/components/cn";
+export { cn } from "../../../../packages/open-design-ui/cn";

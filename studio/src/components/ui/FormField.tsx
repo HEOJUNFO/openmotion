@@ -1,3 +1,4 @@
+import { Button } from "open-design-ui/button";
 import type { ComponentPropsWithRef } from "react";
 
 type FieldDensity = "compact" | "regular" | "intrinsic";
@@ -27,5 +28,5 @@ export function NativeSelect({ appearance = "boxed", density = "regular", ...pro
 
 export function FieldTrigger({ appearance = "boxed", density = "regular", ...props }:
   ComponentPropsWithRef<"button"> & FieldAppearance) {
-  return <button type="button" {...props} data-form-control={appearance} data-form-density={density} />;
+  return <Button variant="plain" type="button" {...props} data-form-control={appearance} data-form-density={density} />;
 }

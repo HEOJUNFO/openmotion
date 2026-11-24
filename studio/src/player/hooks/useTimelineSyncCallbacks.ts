@@ -8,12 +8,14 @@
  *  - onIframeLoad             — orchestrates initializeAdapter with a message-based fallback
  */
 
+import { hasPendingHistoryTimeline } from "../timelineRestorePending";
+import { takePreviewPosition } from "../lib/previewReconnect";
 import { appendUntimedText } from "../lib/timelineUntimedText";
 import { useCallback, useRef } from "react";
 import { liveTime, usePlayerStore } from "../store/playerStore";
 import type { TimelineElement } from "../store/playerStore";
 import type { PlaybackAdapter, IframeWindow } from "../lib/playbackTypes";
-import { readTimelineDurationFromDocument } from "../lib/timelineDOM";
+import { readTimelineDurationFromDocument, restoreAuthoredTrack } from "../lib/timelineDOM";
 import { buildMissingCompositionElements } from "../lib/timelineIframeHelpers";
 import { acceptedRuntimeMessageFps } from "../lib/runtimeProtocol";
 import { useLinkedClipPreferences } from "../../utils/linkedClipPreferences";
@@ -170,7 +172,7 @@ export function useTimelineSyncCallbacks({
   // Convert a runtime timeline message (from iframe postMessage) into TimelineElements
   const processTimelineMessage = useCallback(
     (data: RuntimeTimelineMessage) => {
-      if (!data.clips) return;
+      if (!data.clips || hasPendingHistoryTimeline(iframeRef.current)) return;
 
       usePlayerStore.getState().setClipManifest(data.clips);
 
@@ -218,6 +220,7 @@ export function useTimelineSyncCallbacks({
   );
 
   const enrichMissingCompositions = useCallback(() => {
+    if (hasPendingHistoryTimeline(iframeRef.current)) return;
     try {
       const iframe = iframeRef.current;
       const doc = iframe?.contentDocument;
@@ -237,7 +240,11 @@ export function useTimelineSyncCallbacks({
         // Dedup: ensure no missing element duplicates an existing one
         const finalIds = new Set(updatedEls.map((e) => e.id));
         const dedupedMissing = missing.filter((m) => !finalIds.has(m.id));
-        syncTimelineElements([...updatedEls, ...dedupedMissing]);
+        // Store elements carry normalized display lanes while recovered hosts carry
+        // authored tracks; restore authored tracks before re-normalizing together.
+        const baseEls =
+          dedupedMissing.length > 0 ? updatedEls.map(restoreAuthoredTrack) : updatedEls;
+        syncTimelineElements([...baseEls, ...dedupedMissing]);
       }
     } catch {}
   }, [iframeRef, syncTimelineElements]);
@@ -248,13 +255,15 @@ export function useTimelineSyncCallbacks({
       const adapter = getAdapter();
       if (!adapter || adapter.getDuration() <= 0) return false;
 
+      const reconnect = takePreviewPosition(iframeRef.current);
+      if (reconnect) pendingSeekRef.current = reconnect.time;
       adapter.pause();
       const startTime = seekAdapterToRestorePoint(adapter, pendingSeekRef);
       const commit = () => {
         // Keep non-React listeners such as the time display in sync
         // with the initial adapter seek on iframe load.
         liveTime.notify(startTime);
-        syncAdapterDuration(adapter, setDuration);
+        if (!hasPendingHistoryTimeline(iframeRef.current)) syncAdapterDuration(adapter, setDuration);
         setCurrentTime(startTime);
         if (!isRefreshingRef.current) {
           // Enables Play from actual play-readiness, not just a known duration —
@@ -274,6 +283,7 @@ export function useTimelineSyncCallbacks({
           attachIframeShortcutListeners,
           syncTimelineElements,
         });
+        if (reconnect?.playing) usePlayerStore.getState().requestPlayback(true);
       };
       onAdapterReady(iframeRef.current, context, commit);
       return true;

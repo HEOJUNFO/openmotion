@@ -1,3 +1,4 @@
+import { IconButton } from 'open-design-ui/icon-button';
 import * as tracking from './pageTracking';
 import { useRef, useState } from 'react';
 import { useI18n } from '../i18n/I18n';
@@ -11,6 +12,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { StudioToastViewport } from '../components/StudioToastViewport';
 import { useToast } from '../hooks/useToast';
 import { SettingsDialog } from './settingsPrimitives';
+import { ProjectAgentGrantsDialog } from './ProjectAgentGrantsDialog';
 import { motionApi, type useWorkspace } from './useWorkspace';
 import { PROJECT_ARCHIVE_LIMITS, PROJECT_ARCHIVE_VALIDATION_UNAVAILABLE } from '../../../shared/project-archive';
 import type { ProjectLocation, ProjectManagementInput } from '../../../shared/project-management';
@@ -27,10 +29,17 @@ type ProjectMenuActions = {
   locked: boolean;
   exportProject: (projectId?: string) => Promise<void>;
   beginRename: (projectId: string, title: string, trigger: HTMLElement | null) => Promise<void>;
+  openAgentGrants?: (projectId: string, title: string, trigger: HTMLElement | null) => void;
   projectAction: (action: 'duplicate' | 'info' | 'reveal' | 'trash' | 'restore' | 'delete', projectId: string, title: string, trigger?: HTMLElement | null) => Promise<void>;
 };
 
-export function useProjectArchives(workspace: Workspace, waitForSaves: () => Promise<void>, disabled: boolean, onManagerOpen: () => void) {
+export function useProjectArchives(
+  workspace: Workspace,
+  waitForSaves: () => Promise<void>,
+  disabled: boolean,
+  onManagerOpen: () => void,
+  onOpenMcpSetup?: () => void,
+) {
   const { t } = useI18n();
   const archiveErrorMessage = (error: unknown) => {
     const message = (error as Error).message;
@@ -49,6 +58,10 @@ export function useProjectArchives(workspace: Workspace, waitForSaves: () => Pro
   const [tab, setTab] = useState<'projects' | 'trash'>('projects');
   const [selection, setSelection] = useState<Set<string>>(() => new Set());
   const [deleteDraft, setDeleteDraft] = useState<{ projects: ProjectTarget[]; returnFocus?: HTMLElement | null } | null>(null);
+  const [grantsTarget, setGrantsTarget] = useState<{ projectId: string; title: string; returnFocus?: HTMLElement | null } | null>(null);
+  const openAgentGrants = (projectId: string, title: string, trigger: HTMLElement | null) => {
+    setGrantsTarget({ projectId, title, returnFocus: trigger });
+  };
   const returnFocus = useRef<HTMLElement | null>(null);
   const showManager = () => {
     returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -213,7 +226,7 @@ export function useProjectArchives(workspace: Workspace, waitForSaves: () => Pro
     } finally { acting.current = false; setBusy(null); }
   }
   const locked = disabled || Boolean(busy);
-  const actions: ProjectMenuActions = { locked, exportProject, beginRename, projectAction };
+  const actions: ProjectMenuActions = { locked, exportProject, beginRename, openAgentGrants, projectAction };
   const catalog = tab === 'trash' ? workspace.trashedProjects : workspace.projects;
   const filter = query.trim().toLocaleLowerCase();
   const visible = catalog.filter(project => project.title.toLocaleLowerCase().includes(filter));
@@ -236,9 +249,9 @@ export function useProjectArchives(workspace: Workspace, waitForSaves: () => Pro
         <div className="om-project-manager-toolbar">
           <TabsList aria-label={t('All projects')}><Tab value="projects">{t('Projects')}</Tab><Tab value="trash">{t('Trash')}</Tab></TabsList>
           {tab === 'projects' && <div className="om-settings-actions">
-            <button className="om-button" data-primary disabled={locked} onClick={() => { tracking.reportProjectsClick('import_projects'); chooseImport(); }}><RemixIcon name="upload-2-line" size={16} />{t(busy === 'import' ? 'Importing…' : 'Import projects')}</button>
+            <Button variant="ghost" className="om-button h-auto" data-primary disabled={locked} onClick={() => { tracking.reportProjectsClick('import_projects'); chooseImport(); }}><RemixIcon name="upload-2-line" size={16} />{t(busy === 'import' ? 'Importing…' : 'Import projects')}</Button>
             <Popover modal={false} align="end" aria-label={t('Import help')} className="om-project-import-help"
-              trigger={<button type="button" className="motion-icon-button" aria-label={t('Import help')}><RemixIcon name="question-line" size={18} /></button>}>
+              trigger={<IconButton variant="ghost" type="button" className="motion-icon-button" aria-label={t('Import help')} icon={<RemixIcon name="question-line" size={18} />} />}>
               <h3 className="om-subtitle">{t('Start with a HyperFrames project')}</h3>
               <p className="om-muted">{t('Zip your HyperFrames project folder with its source and local assets, then choose Import projects to continue editing in OpenMotion.')}</p>
               <p className="om-muted">{t('OpenMotion or HyperFrames ZIP · Up to 500 MB. Local assets are included; linked online resources still need the internet.')}</p>
@@ -255,22 +268,22 @@ export function useProjectArchives(workspace: Workspace, waitForSaves: () => Pro
             </div>
             <div className="om-settings-actions">
               {tab === 'projects' ? <>
-                <button className="om-button" disabled={locked || !catalog.length} onClick={() => { tracking.reportProjectsClick('export_projects', { selection_count: selected.length }); void exportProjects(selected.length ? selected.map(project => project.projectId) : undefined); }}>{t(busy === 'export' ? 'Exporting…' : selected.length ? 'Export selected' : 'Export all projects')}</button>
-                <button className="om-button" disabled={locked || !selected.length} onClick={() => void runLifecycle('trash', selected)}>{t('Move to trash')}</button>
+                <Button variant="ghost" className="om-button h-auto" disabled={locked || !catalog.length} onClick={() => { tracking.reportProjectsClick('export_projects', { selection_count: selected.length }); void exportProjects(selected.length ? selected.map(project => project.projectId) : undefined); }}>{t(busy === 'export' ? 'Exporting…' : selected.length ? 'Export selected' : 'Export all projects')}</Button>
+                <Button variant="ghost" className="om-button h-auto" disabled={locked || !selected.length} onClick={() => void runLifecycle('trash', selected)}>{t('Move to trash')}</Button>
               </> : <>
-                <button className="om-button" disabled={locked || !selected.length} onClick={() => void runLifecycle('restore', selected)}>{t('Restore')}</button>
+                <Button variant="ghost" className="om-button h-auto" disabled={locked || !selected.length} onClick={() => void runLifecycle('restore', selected)}>{t('Restore')}</Button>
                 <Button variant="danger" disabled={locked || !selected.length} onClick={event => setDeleteDraft({ projects: selected, returnFocus: event.currentTarget })}>{t('Delete permanently')}</Button>
               </>}
             </div>
           </div>
           <div className="om-project-manager-list" aria-label={t(tab === 'trash' ? 'Trash' : 'Project list')} aria-busy={loading || Boolean(busy)}>
             {loading && [0, 1, 2].map(id => <Skeleton key={id} style={{ height: 'var(--motion-control)' }} />)}
-            {workspace.error && !catalog.length && !workspace.status ? <div className="om-empty"><p className="om-muted">{t('Check your connection and try again.')}</p><button className="om-button" onClick={workspace.retryConnection}>{t('Retry')}</button></div>
+            {workspace.error && !catalog.length && !workspace.status ? <div className="om-empty"><p className="om-muted">{t('Check your connection and try again.')}</p><Button variant="ghost" className="om-button h-auto" onClick={workspace.retryConnection}>{t('Retry')}</Button></div>
               : !loading && !visible.length && <p className="om-muted">{t(filter ? 'No matching projects' : tab === 'trash' ? 'Trash is empty' : 'Create a project with your Agent to start editing.')}</p>}
             {visible.map(project => <div className="om-project-manager-row om-nav-row" key={project.id} data-active={tab === 'projects' && workspace.status?.projectId === project.id}>
               <Checkbox aria-label={t('Select {title}', { title: project.title })} checked={selection.has(project.id)} disabled={locked} onCheckedChange={checked => toggleSelection([project.id], checked)} />
               {tab === 'projects'
-                ? <button className="om-nav-item om-nav-row-link" disabled={locked} onClick={() => { void workspace.open('projects', project.id).then(open => { if (open) setOpened(false); }); }}><span className="truncate">{project.title}</span></button>
+                ? <Button variant="plain" className="om-nav-item om-nav-row-link" disabled={locked} onClick={() => { void workspace.open('projects', project.id).then(open => { if (open) setOpened(false); }); }}><span className="truncate">{project.title}</span></Button>
                 : <span className="om-project-trashed-label truncate" title={project.title}>{project.title}</span>}
               <ProjectArchiveMenu projectId={project.id} title={project.title} trashed={tab === 'trash'} archives={actions} />
             </div>)}
@@ -282,7 +295,7 @@ export function useProjectArchives(workspace: Workspace, waitForSaves: () => Pro
           <p className="om-muted">{deleteDraft.projects.length === 1
             ? t('This permanently deletes “{title}” and its local files.', { title: deleteDraft.projects[0].title })
             : t('This permanently deletes {count} selected projects and their local files.', { count: deleteDraft.projects.length })}</p>
-          <div className="om-settings-actions"><button type="button" className="om-button" onClick={() => setDeleteDraft(null)}>{t('Cancel')}</button>
+          <div className="om-settings-actions"><Button variant="ghost" type="button" className="om-button h-auto" onClick={() => setDeleteDraft(null)}>{t('Cancel')}</Button>
             <Button type="button" variant="danger" disabled={locked} onClick={() => { const { projects } = deleteDraft; setDeleteDraft(null); void runLifecycle('delete', projects); }}>{t('Delete permanently')}</Button></div>
         </div>
       </SettingsDialog>}
@@ -290,11 +303,18 @@ export function useProjectArchives(workspace: Workspace, waitForSaves: () => Pro
     {renameDraft && <SettingsDialog title={t('Rename project')} onClose={() => setRenameDraft(null)} returnFocus={renameDraft.returnFocus}>
       <form className="om-project-edit-form" onSubmit={event => { event.preventDefault(); void renameProject(renameDraft, name); }}>
         <label className="om-label">{t('Project name')}<span className="om-field"><input autoFocus maxLength={100} value={name} disabled={locked} onFocus={event => event.target.select()} onChange={event => setName(event.target.value)} /></span></label>
-        <div className="om-settings-actions"><button type="button" className="om-button" onClick={() => setRenameDraft(null)}>{t('Cancel')}</button><button className="om-button" data-primary disabled={locked || !name.trim()}>{t(busy === 'rename' ? 'Saving…' : 'Save')}</button></div>
+        <div className="om-settings-actions"><Button variant="ghost" type="button" className="om-button h-auto" onClick={() => setRenameDraft(null)}>{t('Cancel')}</Button><Button variant="ghost" className="om-button h-auto" data-primary disabled={locked || !name.trim()}>{t(busy === 'rename' ? 'Saving…' : 'Save')}</Button></div>
       </form>
     </SettingsDialog>}
+    {grantsTarget && <ProjectAgentGrantsDialog
+      projectId={grantsTarget.projectId}
+      projectTitle={grantsTarget.title}
+      onClose={() => setGrantsTarget(null)}
+      onOpenMcpSetup={onOpenMcpSetup}
+      returnFocus={grantsTarget.returnFocus}
+    />}
   </>;
-  return { ...actions, busy, showManager, chooseImport, manager };
+  return { ...actions, open: opened, busy, showManager, chooseImport, manager };
 }
 
 export type ProjectArchiveActions = ReturnType<typeof useProjectArchives>;
@@ -302,12 +322,13 @@ export function ProjectArchiveMenu({ projectId, title, trashed = false, archives
   const { t } = useI18n();
   const trigger = useRef<HTMLButtonElement>(null);
   const revealLabel = /Mac/i.test(navigator.platform) ? 'Reveal in Finder' : /Win/i.test(navigator.platform) ? 'Show in File Explorer' : 'Show in file manager';
-  return <Menu modal={false} align="end" presentation="panel" aria-label={t('Actions for {title}', { title })} trigger={<button ref={trigger} type="button" className="motion-icon-button om-nav-row-action" disabled={archives.locked} aria-label={t('Actions for {title}', { title })}><RemixIcon name="more-2-line" size={16} /></button>}>
+  return <Menu modal={false} align="end" presentation="panel" aria-label={t('Actions for {title}', { title })} trigger={<IconButton variant="plain" ref={trigger} type="button" className="motion-icon-button om-nav-row-action" disabled={archives.locked} aria-label={t('Actions for {title}', { title })} icon={<RemixIcon name="more-2-line" size={16} />} />}>
     {trashed ? <>
       <MenuItem icon={<RemixIcon name="history-line" size={14} />} onClick={() => void archives.projectAction('restore', projectId, title)}>{t('Restore project')}</MenuItem>
       <MenuItem icon={<RemixIcon name="delete-bin-line" size={14} />} tone="danger" onClick={() => void archives.projectAction('delete', projectId, title, trigger.current)}>{t('Delete permanently')}</MenuItem>
     </> : <>
       <MenuItem icon={<RemixIcon name="edit-line" size={14} />} onClick={() => void archives.beginRename(projectId, title, trigger.current)}>{t('Rename project')}</MenuItem>
+      {archives.openAgentGrants && <MenuItem icon={<RemixIcon name="plug-line" size={14} />} onClick={() => archives.openAgentGrants!(projectId, title, trigger.current)}>{t('Agent access')}</MenuItem>}
       <MenuItem icon={<RemixIcon name="file-copy-line" size={14} />} onClick={() => void archives.projectAction('duplicate', projectId, title)}>{t('Duplicate project')}</MenuItem>
       <MenuItem icon={<RemixIcon name="download-2-line" size={14} />} onClick={() => void archives.exportProject(projectId)}>{t('Export project')}</MenuItem>
       <MenuItem icon={<RemixIcon name="folder-open-line" size={14} />} onClick={() => void archives.projectAction('reveal', projectId, title)}>{t(revealLabel)}</MenuItem>

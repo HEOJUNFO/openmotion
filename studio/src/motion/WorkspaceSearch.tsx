@@ -1,3 +1,4 @@
+import { Button } from 'open-design-ui/button';
 import { useEffect, useState, type ReactNode } from 'react';
 import type { LibraryAsset } from '../../../shared/asset-library';
 import type { Modality } from '../../../shared/gateway';
@@ -6,13 +7,14 @@ import { useI18n } from '../i18n/I18n';
 import { Popover } from '../components/ui/Popover';
 import { Skeleton } from '../components/ui/Skeleton';
 import { RemixIcon } from '../icons/RemixIcons';
-import { escapeRegex } from '../utils/sourcePatcher';
+import { escapeRegex } from '../utils/regex';
 import { assetRequest } from './assetClient';
 import { creationKinds } from './AssetCreationVisuals';
-import { mediaLabels, modelDestination, sceneDestination, studioDestination, supportsScene, type StudioDestination } from './creativeStudios';
+import { mediaLabels, modelDestination, sceneDestination, studioIconTone, supportsScene, type StudioDestination } from './creativeStudios';
 import { motionSkills } from './skillCatalog';
 import { ModelAvatar } from './settingsPrimitives';
 import { useMediaCatalog } from './useMediaCatalog';
+import { useCloudFeatureEnabled } from '../utils/cloudFeatures';
 
 type Result = { id: string; label: string; detail?: string; modality?: Modality; icon: ReactNode; open: () => void };
 
@@ -50,6 +52,8 @@ export function WorkspaceSearch({ onSkill, onScene, onStudio, onAsset, onCommuni
   destination: StudioDestination | null; onLibrary: () => void; onAccount: () => void;
 }) {
   const { t } = useI18n();
+  const gameStudioEnabled = useCloudFeatureEnabled('gameStudio');
+  const designStudioEnabled = useCloudFeatureEnabled('designStudio');
   const [open, setOpen] = useState(false), [input, setInput] = useState('');
   const [offset, setOffset] = useState(0);
   const query = open ? input.trim().toLocaleLowerCase() : '';
@@ -58,9 +62,12 @@ export function WorkspaceSearch({ onSkill, onScene, onStudio, onAsset, onCommuni
   const pattern = query ? new RegExp('(' + [...terms].sort((a, b) => b.length - a.length).map(escapeRegex).join('|') + ')', 'iu') : null;
   const matches = (...fields: string[]) => terms.every(term => fields.join(' ').toLocaleLowerCase().includes(term));
   const providers = new Map(catalog.catalog?.status.providers.map(provider => [provider.id, provider.label]));
+  const visibleStudios = creativeStudios.filter(studio =>
+    (gameStudioEnabled || studio.id !== 'game') && (designStudioEnabled || studio.id !== 'design'),
+  );
   const groups: [string, Result[]][] = [
-    ['Studios', creativeStudios.filter(studio => matches(studio.title, t(studio.title))).map(studio =>
-      ({ id: studio.id, label: t(studio.title), icon: searchIcon(studio.icon, studio.surface === 'editor' ? studio.modalities[0] : studioDestination(studio).scene.modality), open: () => onStudio(studio) }))],
+    ['Studios', visibleStudios.filter(studio => matches(studio.title, t(studio.title))).map(studio =>
+      ({ id: studio.id, label: t(studio.title), icon: searchIcon(studio.icon, studioIconTone(studio)), open: () => onStudio(studio) }))],
     ['Scenes', studioScenes.filter(scene => query && matches(scene.id, t(scene.label), t(scene.hint), t(mediaLabels[scene.modality]))).map(scene =>
       ({ id: scene.id, label: t(scene.label), detail: t(mediaLabels[scene.modality]), icon: searchIcon(scene.icon, scene.modality), open: () => onScene(sceneDestination(scene, destination)) }))],
     ['Skills', motionSkills.filter(skill => query && matches(skill.name, t(skill.title), t(skill.tagline), t(skill.category))).map(skill =>
@@ -76,24 +83,24 @@ export function WorkspaceSearch({ onSkill, onScene, onStudio, onAsset, onCommuni
   const choose = (action: () => void) => { setOpen(false); onChoose?.(); action(); };
   const loading = query && ((!catalog.catalog && !catalog.failed) || !assets.result);
   return <Popover tooltip={onChoose ? undefined : t('Search workspace')} modal={false} open={open} onOpenChange={setOpen} align="end" aria-label={t('Search workspace')} className="om-selection-panel om-workspace-search"
-    trigger={<button className={onChoose ? 'om-nav-item om-workspace-search-trigger' : 'om-nav-item om-workspace-search-trigger om-header-icon'} aria-label={t('Search workspace')}><RemixIcon name="search-line" size={17} />{onChoose && t('Search workspace')}</button>}>
+    trigger={<Button variant="plain" className={onChoose ? 'om-nav-item om-workspace-search-trigger' : 'om-nav-item om-workspace-search-trigger om-header-icon'} aria-label={t('Search workspace')}><RemixIcon name="search-line" size={17} />{onChoose && t('Search workspace')}</Button>}>
     {open && <>
       <label className="om-field"><RemixIcon name="search-line" size={16} /><input autoFocus type="search" maxLength={180} value={input} onChange={event => { setInput(event.target.value); setOffset(0); }} placeholder={t('Search workspace')} aria-label={t('Search workspace')} /></label>
-      <div className="om-search-shortcuts"><button className="om-nav-item" onClick={() => choose(onLibrary)}>{searchIcon('folder-open-line', 'audio')}{t('Workspace assets')}</button><button className="om-nav-item" onClick={() => choose(onAccount)}>{searchIcon('user-3-line', 'agent')}{t('Account')}</button></div>
+      <div className="om-search-shortcuts"><Button variant="plain" className="om-nav-item" onClick={() => choose(onLibrary)}>{searchIcon('folder-open-line', 'audio')}{t('Workspace assets')}</Button><Button variant="plain" className="om-nav-item" onClick={() => choose(onAccount)}>{searchIcon('user-3-line', 'agent')}{t('Account')}</Button></div>
       <div className="om-search-results">{groups.map(([title, rows]) => rows.length > 0 && <section key={title} aria-label={t(title)}><h2 className="om-eyebrow">{t(title)}</h2>
-        {rows.map(row => <button className="om-nav-item" key={row.id} aria-label={[row.label, row.detail, row.modality && t(mediaLabels[row.modality])].filter(Boolean).join(', ')} onClick={() => choose(row.open)}>
+        {rows.map(row => <Button variant="plain" className="om-nav-item" key={row.id} aria-label={[row.label, row.detail, row.modality && t(mediaLabels[row.modality])].filter(Boolean).join(', ')} onClick={() => choose(row.open)}>
           {row.icon}
           <span className="om-search-result-copy"><strong>{highlight(row.label, pattern)}</strong>{row.detail && <small className="om-muted">{highlight(row.detail, pattern)}</small>}</span>
           {row.modality && <span className="om-badge" data-tone={row.modality}>{t(mediaLabels[row.modality])}</span>}
-        </button>)}
+        </Button>)}
       </section>)}
         {loading && <Skeleton className="om-creative-model-skeleton" />}
-        {query && catalog.failed && <button className="om-button" onClick={catalog.retry}>{t('Retry loading models')}</button>}
-        {query && assets.result && !assets.result.assets && <button className="om-button" onClick={assets.retry}>{t('Retry loading assets')}</button>}
+        {query && catalog.failed && <Button type="button" variant="ghost" className="om-button" onClick={catalog.retry}>{t('Retry loading models')}</Button>}
+        {query && assets.result && !assets.result.assets && <Button type="button" variant="ghost" className="om-button" onClick={assets.retry}>{t('Retry loading assets')}</Button>}
         {query && (offset > 0 || assets.result?.nextOffset != null) && <div className="om-asset-pagination">
-          <button className="om-button" disabled={!offset} onClick={() => setOffset(Math.max(0, offset - assetPageSize))}>{t('Previous')}</button>
+          <Button variant="ghost" className="om-button h-auto" disabled={!offset} onClick={() => setOffset(Math.max(0, offset - assetPageSize))}>{t('Previous')}</Button>
           <span className="om-muted">{Math.floor(offset / assetPageSize) + 1}</span>
-          <button className="om-button" disabled={assets.result?.nextOffset == null} onClick={() => { if (assets.result?.nextOffset != null) setOffset(assets.result.nextOffset); }}>{t('Next')}</button>
+          <Button variant="ghost" className="om-button h-auto" disabled={assets.result?.nextOffset == null} onClick={() => { if (assets.result?.nextOffset != null) setOffset(assets.result.nextOffset); }}>{t('Next')}</Button>
         </div>}
         {query && !loading && !catalog.failed && assets.result?.assets && groups.every(([, rows]) => rows.length === 0) && <p className="om-muted">{t('No matches')}</p>}
       </div>

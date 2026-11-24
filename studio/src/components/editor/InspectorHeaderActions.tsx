@@ -1,3 +1,5 @@
+import { IconButton } from "open-design-ui/icon-button";
+import { Button } from "open-design-ui/button";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from '../../i18n/I18n';
 import { Eye, EyeSlash } from "../../icons/RemixIcons";
@@ -26,7 +28,7 @@ export function InspectorHeaderActions({
   onUngroup?: () => void;
   selectedElementId?: string | null;
   selectedElementHidden?: boolean;
-  visibilityLabel?: string;
+  visibilityLabel: string;
   onToggleHidden?: (id: string, hidden: boolean) => void;
 }) {
   const { t } = useI18n();
@@ -34,7 +36,7 @@ export function InspectorHeaderActions({
   return (
     <div className="flex items-center gap-1">
       {selectedElementId && onToggleHidden && (
-        <button
+        <IconButton variant="plain"
           type="button"
           aria-label={visibilityLabel}
           title={visibilityLabel}
@@ -43,16 +45,15 @@ export function InspectorHeaderActions({
             void onToggleHidden(selectedElementId, !selectedElementHidden);
           }}
           className="flex h-6 w-6 items-center justify-center rounded-sm text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-300"
-        >
-          {selectedElementHidden ? (
+          icon={selectedElementHidden ? (
             <EyeSlash size={13} weight="bold" aria-hidden="true" />
           ) : (
             <Eye size={13} weight="bold" aria-hidden="true" />
           )}
-        </button>
+        />
       )}
       {onUngroup && element.dataAttributes["hf-group"] != null && (
-        <button
+        <Button variant="plain"
           type="button"
           onClick={() => {
             track("button", "Ungroup");
@@ -62,9 +63,9 @@ export function InspectorHeaderActions({
           className="flex h-6 items-center rounded-sm px-2 text-[11px] font-medium text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-200"
         >
           {t('Ungroup')}
-        </button>
+        </Button>
       )}
-      <button
+      <IconButton variant="plain" aria-label={t(copied ? "Copied!" : "Copy element info to clipboard")}
         type="button"
         onClick={() => {
           track("button", "Copy element info");
@@ -76,10 +77,9 @@ export function InspectorHeaderActions({
             : "text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300"
         }`}
         title={t(copied ? "Copied!" : "Copy element info to clipboard")}
-      >
-        <RemixIcon name="file-copy-line" size={13} />
-      </button>
-      <button
+        icon={<RemixIcon name="file-copy-line" size={13} />}
+      />
+      <IconButton variant="plain"
         type="button"
         aria-label={t("Clear selection")}
         onClick={() => {
@@ -87,9 +87,8 @@ export function InspectorHeaderActions({
           onClear();
         }}
         className="flex h-6 w-6 items-center justify-center rounded-sm text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-300"
-      >
-        <X size={13} />
-      </button>
+        icon={<X size={13} />}
+      />
     </div>
   );
 }

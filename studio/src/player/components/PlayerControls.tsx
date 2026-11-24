@@ -1,3 +1,5 @@
+import { IconButton } from "open-design-ui/icon-button";
+import { Button } from "open-design-ui/button";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { clickMethod, trackStudioClick } from "../../motion/editorTracking";
 import { useMvpEditor } from "../../motion/StudioHost";
@@ -71,7 +73,7 @@ const LoopButton = memo(function LoopButton({
   const { t } = useI18n();
   return (
     <Tooltip label={t("Loop playback")}>
-      <button
+      <IconButton variant="plain"
         type="button"
         onClick={(event) => {
           trackStudioEvent("playback", { action: "loop_toggle", enabled: !loopEnabled });
@@ -84,9 +86,8 @@ const LoopButton = memo(function LoopButton({
         }`}
         aria-label={loopEnabled ? t("Disable loop playback") : t("Enable loop playback")}
         aria-pressed={loopEnabled}
-      >
-        <RemixIcon name="repeat-line" size={16} />
-      </button>
+        icon={<RemixIcon name="repeat-line" size={16} />}
+      />
     </Tooltip>
   );
 });
@@ -102,7 +103,7 @@ const FullscreenButton = memo(function FullscreenButton({
   const fsKey = keyHint("fullscreen", useStudioKeys());
   return (
     <Tooltip label={isFullscreen ? t("Exit fullscreen ({fsKey})", { fsKey: fsKey }) : t("Enter fullscreen ({fsKey})", { fsKey: fsKey })}>
-      <button
+      <IconButton variant="plain"
         type="button"
         onClick={() => {
           trackStudioEvent("playback", { action: "fullscreen_toggle", active: !isFullscreen });
@@ -112,9 +113,8 @@ const FullscreenButton = memo(function FullscreenButton({
           isFullscreen ? "text-accent-ink" : "text-neutral-500 hover:text-neutral-200"
         }`}
         aria-label={isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")}
-      >
-        <RemixIcon name={isFullscreen ? "fullscreen-exit-line" : "fullscreen-line"} size={16} />
-      </button>
+        icon={<RemixIcon name={isFullscreen ? "fullscreen-exit-line" : "fullscreen-line"} size={16} />}
+      />
     </Tooltip>
   );
 });
@@ -207,7 +207,7 @@ export const PlayerControls = memo(function PlayerControls({
         </span></div> : <Tooltip
           label={timeDisplayMode === "time" ? t("Switch to frame display") : t("Switch to time display")}
         >
-          <button
+          <Button variant="plain"
             type="button"
             onClick={() => setTimeDisplayMode(timeDisplayMode === "time" ? "frame" : "time")}
             disabled={disabled}
@@ -220,11 +220,11 @@ export const PlayerControls = memo(function PlayerControls({
                 <span className="text-neutral-600">{formatTime(duration)}</span>
               </>
             ) : null}
-          </button>
+          </Button>
         </Tooltip>}
 
         <Tooltip label={isPlaying ? t("Pause") : t("Play")}>
-          <button
+          <IconButton variant="plain"
             type="button"
             data-studio-control="playback"
             aria-label={isPlaying ? t("Pause") : t("Play")}
@@ -235,9 +235,8 @@ export const PlayerControls = memo(function PlayerControls({
             }}
             disabled={controlsDisabled}
             className="flex h-7 w-8 items-center justify-center justify-self-center rounded-md text-neutral-100 transition-colors hover:text-white disabled:pointer-events-none disabled:opacity-30"
-          >
-            {mvp ? <RemixIcon name={isPlaying ? "pause-fill" : "play-fill"} size={20} /> : <PlayPauseMorphIcon playing={isPlaying} />}
-          </button>
+            icon={mvp ? <RemixIcon name={isPlaying ? "pause-fill" : "play-fill"} size={20} /> : <PlayPauseMorphIcon playing={isPlaying} />}
+          />
         </Tooltip>
 
         <div className={`flex min-w-0 items-center justify-self-end ${mvp ? "motion-player-secondary" : ""}`}>

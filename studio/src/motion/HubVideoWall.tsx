@@ -1,3 +1,5 @@
+import { Button } from 'open-design-ui/button';
+import { IconButton } from 'open-design-ui/icon-button';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useToast } from '../hooks/useToast';
 import { Tooltip } from '../components/ui/Tooltip';
@@ -101,13 +103,13 @@ export function HubVideoWall({ hubId, signedIn, videos, title, query = '' }: { h
       <h2 className="om-subtitle">{t('Made with {model}', { model: title })}</h2><span className="om-hub-video-sort">{xMark}{t('Ranked by X popularity')}</span>
     </div>
       <div className="om-hub-video-filters">
-      <nav className="om-choice-tabs" aria-label={t('Filter videos')}>{tabs.map(([id, label]) => <button key={id} className="om-nav-item" aria-pressed={filter === id}
-        onClick={() => { reportHubClick(hubId, 'hub_videos', 'filter_option', { filter: id, signedIn }); setFilter(id); }}>{label}</button>)}</nav></div>
+      <nav className="om-choice-tabs" aria-label={t('Filter videos')}>{tabs.map(([id, label]) => <Button variant="plain" key={id} className="om-nav-item" aria-pressed={filter === id}
+        onClick={() => { reportHubClick(hubId, 'hub_videos', 'filter_option', { filter: id, signedIn }); setFilter(id); }}>{label}</Button>)}</nav></div>
     </div>
     {!visible.length && <p className="om-muted om-hub-video-empty">{t('No videos match. Try another title, creator or scene.')}</p>}
     <div ref={grid} className="om-hub-video-grid">{rowMajorColumns(visible, columns).map((column, c) => <div key={c} className="om-hub-video-column">{column.map(video => <article key={video.id} className="om-gallery-card om-hub-video" data-has-video="true" data-video-id={video.id}>
       <div className="om-gallery-card-media">
-        <button className="om-gallery-cover" style={{ aspectRatio: aspect(video) }}
+        <Button variant="plain" className="om-gallery-cover" style={{ aspectRatio: aspect(video) }}
           aria-label={t('Preview video {title}', { title: t(video.title) })} onClick={event => {
             reportHubClick(hubId, 'hub_videos', 'open_detail', { video: video.id, position: shown.indexOf(video), signedIn });
             returnFocus.current = event.currentTarget; setOpen(video.id);
@@ -121,7 +123,7 @@ export function HubVideoWall({ hubId, signedIn, videos, title, query = '' }: { h
             <span className="om-gallery-card-caption"><strong>{t(video.title)}</strong><small>{video.author}{video.platform === 'x' && <> · {t('{count} views', { count: compact.format(video.views) })}</>}</small></span>
             <span className="om-gallery-card-arrow"><RemixIcon name="arrow-right-up-line" size={18} /></span>
           </span>
-        </button>
+        </Button>
         {/* Previews sit beside the button, never inside it; the button stays the single click target. */}
         {!still && inView.has(video.id) && video.platform !== 'x' && <video className="om-gallery-animation" src={video.video} muted loop playsInline autoPlay aria-hidden="true" />}
         {!still && inView.has(video.id) && video.platform === 'x' && <iframe className="om-gallery-animation" srcDoc={previewDocument(video)} sandbox="allow-scripts" allow="autoplay" tabIndex={-1} aria-hidden="true" title="" />}
@@ -219,17 +221,17 @@ function HubVideoDetail({ videos, id, onChange, onClose, returnFocus, title, tra
                 : <video key={video.id} className="om-hub-video-stage" src={video.source} poster={video.poster} controls autoPlay muted playsInline loop preload="metadata" />}
             </div>
             <nav className={styles.stageNavigation} aria-label={t('Browse videos')}>
-              <button className="om-button" disabled={videos.length < 2} onClick={() => step(-1)}><MotionIcon name="arrow-left" size={16} />{t('Previous template')}</button>
+              <Button variant="ghost" className="om-button h-auto" disabled={videos.length < 2} onClick={() => step(-1)}><MotionIcon name="arrow-left" size={16} />{t('Previous template')}</Button>
               <span>{index + 1} / {videos.length}</span>
-              <button className="om-button" disabled={videos.length < 2} onClick={() => step(1)}>{t('Next template')}<MotionIcon name="arrow-right" size={16} /></button>
+              <Button variant="ghost" className="om-button h-auto" disabled={videos.length < 2} onClick={() => step(1)}>{t('Next template')}<MotionIcon name="arrow-right" size={16} /></Button>
             </nav>
           </div>
           <div className={styles.detailInfo}>
             <div className={styles.detailNav}>
-              <Tooltip withinDialog wrap label={t('Close template preview')}><button className={styles.iconButton} autoFocus onClick={() => { track('close_detail', { video: video.id }); onClose(); }} aria-label={t('Close template preview')}><MotionIcon name="close" size={20} /></button></Tooltip>
+              <Tooltip withinDialog wrap label={t('Close template preview')}><IconButton variant="plain" className={styles.iconButton} autoFocus onClick={() => { track('close_detail', { video: video.id }); onClose(); }} aria-label={t('Close template preview')} icon={<MotionIcon name="close" size={20} />} /></Tooltip>
               <span className={styles.detailCount}>{index + 1} / {videos.length}</span>
-              <Tooltip withinDialog wrap label={t('Previous template')}><button className={styles.iconButton} disabled={videos.length < 2} onClick={() => step(-1)} aria-label={t('Previous template')}><MotionIcon name="arrow-left" size={18} /></button></Tooltip>
-              <Tooltip withinDialog wrap label={t('Next template')}><button className={styles.iconButton} disabled={videos.length < 2} onClick={() => step(1)} aria-label={t('Next template')}><MotionIcon name="arrow-right" size={18} /></button></Tooltip>
+              <Tooltip withinDialog wrap label={t('Previous template')}><IconButton variant="plain" className={styles.iconButton} disabled={videos.length < 2} onClick={() => step(-1)} aria-label={t('Previous template')} icon={<MotionIcon name="arrow-left" size={18} />} /></Tooltip>
+              <Tooltip withinDialog wrap label={t('Next template')}><IconButton variant="plain" className={styles.iconButton} disabled={videos.length < 2} onClick={() => step(1)} aria-label={t('Next template')} icon={<MotionIcon name="arrow-right" size={18} />} /></Tooltip>
             </div>
             <div className={styles.detailBody}>
               <h2 className="om-media-detail-title">{t(video.title)}</h2>
@@ -241,7 +243,7 @@ function HubVideoDetail({ videos, id, onChange, onClose, returnFocus, title, tra
               <section className={styles.reviewResources} aria-label={t('Video info')}>
                 <a className={`om-text-link ${styles.repositoryLink}`} data-quiet href={video.post} target="_blank" rel="noreferrer" onClick={() => track('view_source', { video: video.id })}>{video.platform === 'x' ? <>{xMark}{t('View on X')}</> : <><MotionIcon name="arrow-up-right" size={16} />{t('View original')}</>}</a>
                 <div className={styles.reviewResourceActions}>{motionDocuments[video.id] && <Tooltip withinDialog wrap label="motion.md" description={t('Download the shot and motion notes.')}>
-                  <button className={`om-text-link ${styles.repositoryLink}`} data-quiet disabled={downloading} onClick={() => void downloadMotion()}><MotionIcon name="download" size={17} />{t(downloading ? 'Downloading…' : 'Download motion.md')}</button>
+                  <Button variant="plain" className={`om-text-link ${styles.repositoryLink}`} data-quiet disabled={downloading} onClick={() => void downloadMotion()}><MotionIcon name="download" size={17} />{t(downloading ? 'Downloading…' : 'Download motion.md')}</Button>
                 </Tooltip>}</div>
               </section>
               <div className={styles.reviewOverview} aria-label={t('About this starting point')}>
@@ -255,20 +257,20 @@ function HubVideoDetail({ videos, id, onChange, onClose, returnFocus, title, tra
                   </dl>
                   {video.palette.length > 0 && <div className={styles.reviewColors}>
                     <span>{t('Reference colors')}</span>
-                    <div className={styles.palette}>{video.palette.map(color => <Tooltip key={color} withinDialog wrap label={t('Copy color {color}', { color })}><button className={styles.colorSwatch} style={{ backgroundColor: color }} aria-label={t('Copy color {color}', { color })} onClick={() => copyColor(color)} /></Tooltip>)}</div>
+                    <div className={styles.palette}>{video.palette.map(color => <Tooltip key={color} withinDialog wrap label={t('Copy color {color}', { color })}><Button variant="plain" className={styles.colorSwatch} style={{ backgroundColor: color }} aria-label={t('Copy color {color}', { color })} onClick={() => copyColor(color)} /></Tooltip>)}</div>
                   </div>}
                 </section>
               </div>
               <section className={`${styles.instruction} ${styles.reviewCreation}`} aria-label={t('Template recreation instruction')}>
                 <header><h3>{t('Template recreation instruction')}</h3>
                   <Popover key={video.id} container={dialog} align="end" openOnHover aria-label={t('After copying')} className={styles.handoffPopover} initialFocus={false}
-                    trigger={<button className={`om-text-link ${styles.handoffHelp}`} data-quiet>{t('Next steps')}<MotionIcon name="info" size={14} /></button>}>
+                    trigger={<Button variant="plain" className={`om-text-link ${styles.handoffHelp}`} data-quiet>{t('Next steps')}<MotionIcon name="info" size={14} /></Button>}>
                     <div onKeyDown={event => event.stopPropagation()}><TemplateHandoffSteps template={{ id: video.id } as GalleryTemplate} /></div>
                   </Popover>
                 </header>
                 {manualCopy ? <textarea className={styles.manualCopy} readOnly rows={8} value={manualCopy} aria-label={t('Content to copy')} onFocus={event => event.currentTarget.select()} />
                   : <p className={expanded ? styles.fullInstruction : styles.shortInstruction}>{prompt}</p>}
-                <button className={`om-text-link ${styles.expandInstruction}`} data-quiet aria-expanded={expanded} onClick={() => { track('expand_instruction', { video: video.id }); setExpanded(!expanded); }}>{t(expanded ? 'Show less' : 'Show instruction')}<MotionIcon name="chevron-down" size={14} /></button>
+                <Button variant="plain" className={`om-text-link ${styles.expandInstruction}`} data-quiet aria-expanded={expanded} onClick={() => { track('expand_instruction', { video: video.id }); setExpanded(!expanded); }}>{t(expanded ? 'Show less' : 'Show instruction')}<MotionIcon name="chevron-down" size={14} /></Button>
               </section>
               <section className={styles.productionNotes} aria-label={t('Production details')}>
                 <h3>{t('Production details')}</h3>
@@ -278,9 +280,9 @@ function HubVideoDetail({ videos, id, onChange, onClose, returnFocus, title, tra
             <div ref={footer} className={styles.reviewFooter} role="group" aria-label={t('Template actions')}>
               <div className={styles.handoffActions}>
                 <div className={styles.recreateActions}>
-                  <button className="om-button" data-primary onClick={() => void copy()}>{t('Recreate this template')}<MotionIcon name="sparkles" size={16} /></button>
+                  <Button variant="ghost" className="om-button h-auto" data-primary onClick={() => void copy()}>{t('Recreate this template')}<MotionIcon name="sparkles" size={16} /></Button>
                   <Tooltip withinDialog wrap label={t('Contribute a template')} description={t('Copy contribution instructions for source, a preview and credits.')}>
-                    <button className={`om-button ${styles.submitTemplate}`} aria-label={t('Copy contribution brief')} onClick={() => void copy(true)}><MotionIcon name="git-branch" size={17} /></button>
+                    <IconButton variant="plain" className={`om-button ${styles.submitTemplate}`} aria-label={t('Copy contribution brief')} onClick={() => void copy(true)} icon={<MotionIcon name="git-branch" size={17} />} />
                   </Tooltip>
                 </div>
               </div>
@@ -290,12 +292,12 @@ function HubVideoDetail({ videos, id, onChange, onClose, returnFocus, title, tra
         {similar.length > 0 && <section className={`om-gallery-results ${styles.relatedShelf}`} aria-label={t('Similar videos')}>
           <header className={styles.relatedHeading}><h3>{t('Similar templates')}</h3><p>{t(video.category)}</p></header>
           <div className="om-gallery-masonry">{similar.map(item => <article key={item.id} className="om-gallery-card om-hub-video">
-            <div className="om-gallery-card-media"><button className="om-gallery-cover" style={{ aspectRatio: aspect(item) }} aria-label={t('Preview video {title}', { title: t(item.title) })} onClick={() => { track('open_detail', { video: item.id, position: similar.indexOf(item) }); onChange(item.id); }}>
+            <div className="om-gallery-card-media"><Button variant="plain" className="om-gallery-cover" style={{ aspectRatio: aspect(item) }} aria-label={t('Preview video {title}', { title: t(item.title) })} onClick={() => { track('open_detail', { video: item.id, position: similar.indexOf(item) }); onChange(item.id); }}>
               <div className="om-gallery-poster" data-loaded="true"><img src={item.poster} alt="" loading="lazy" referrerPolicy="no-referrer" /></div>
               <span className="om-gallery-card-shade" />
               {item.platform === 'x' && <span className="om-hub-video-heat">{xMark}<RemixIcon name="eye-line" size={12} />{compact.format(item.views)}</span>}
               <span className="om-gallery-card-bottom"><span className="om-gallery-avatar" aria-hidden="true">{item.authorName.slice(0, 1).toUpperCase()}{item.avatar && <img src={item.avatar} alt="" loading="lazy" referrerPolicy="no-referrer" />}</span><span className="om-gallery-card-caption"><strong>{t(item.title)}</strong><small>{item.author}</small></span></span>
-            </button></div>
+            </Button></div>
           </article>)}</div>
         </section>}
       </div>

@@ -43,6 +43,6 @@ export function listSourceFiles(
     }
   };
   walk(SRC_DIR);
-  walk(path.join(REPO_ROOT, "packages/design-system/components"), false);
+  walk(path.join(REPO_ROOT, "packages/open-design-ui"), false);
   return files;
 }

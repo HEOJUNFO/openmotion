@@ -156,11 +156,14 @@ it('localizes the instruction and keeps the user brief', () => {
   expect(text).not.toContain('风格');
 });
 
-it('routes the skills page and selected skill through the query', () => {
+it('routes the skills page and selected skill through semantic paths while keeping legacy queries compatible', () => {
   const href = workspacePageHref('http://local/?page=assets', { skills: true, skill: 'manim' });
-  expect(href).toBe('/?page=skills&skill=manim');
+  expect(href).toBe('/skills/manim');
+  expect(readWorkspacePage('', '', href)).toMatchObject({ skills: true, skill: 'manim', assets: false, settings: null });
   expect(readWorkspacePage('?page=skills&skill=manim')).toMatchObject({ skills: true, skill: 'manim', assets: false, settings: null });
-  expect(readWorkspacePage(workspacePageHref('http://local' + href, { assets: true }).slice(1))).toMatchObject({ assets: true, skills: false, skill: null });
+  const assetsHref = workspacePageHref('http://local' + href, { assets: true });
+  expect(assetsHref).toBe('/assets');
+  expect(readWorkspacePage('', '', assetsHref)).toMatchObject({ assets: true, skills: false, skill: null });
   expect(isWorkspaceSettingsPage('?page=skills')).toBe(true);
 });
 
@@ -294,6 +297,35 @@ it('ships static WebP posters and waits to fetch archived video until playback s
   act(() => root.render(<SkillMedia skill={skill} playing={false} />));
   expect(container.querySelectorAll('video')).toHaveLength(0);
   expect(container.querySelectorAll('img')).toHaveLength(2);
+  // Re-entering playback reuses the cached Blob instead of re-fetching from GitHub Raw.
+  await act(async () => root.render(<SkillMedia skill={skill} playing />));
+  expect(videoRequests()).toEqual([videoUrl]);
+  act(() => root.render(<SkillMedia skill={skill} playing={false} />));
+});
+
+it('keeps a shared in-flight archived preview alive when one of two subscribers unmounts', async () => {
+  const skill = motionSkills.find(entry => entry.cover?.video?.startsWith(skillPreviewSnapshot) && entry.id !== 'motionmaxxing')!;
+  const videoUrl = skill.cover!.video!;
+  let resolveFetch!: (response: Response) => void;
+  let capturedSignal: AbortSignal | undefined;
+  const fetcher = vi.mocked(fetch).mockImplementation((input, init) => {
+    if (String(input) === videoUrl) {
+      capturedSignal = init?.signal ?? undefined;
+      return new Promise<Response>(resolve => { resolveFetch = resolve; });
+    }
+    return Promise.resolve(new Response(null, { status: 404 }));
+  });
+  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:shared-preview');
+  act(() => root.render(<><SkillMedia key="a" skill={skill} playing /><SkillMedia key="b" skill={skill} playing /></>));
+  expect(fetcher.mock.calls.filter(([input]) => String(input) === videoUrl)).toHaveLength(1);
+  // Unmounting the first subscriber must not abort the shared request for the remaining subscriber.
+  act(() => root.render(<><SkillMedia key="b" skill={skill} playing /></>));
+  expect(capturedSignal?.aborted).toBe(false);
+  await act(async () => {
+    resolveFetch(new Response('sample', { headers: { 'Content-Type': 'application/octet-stream' } }));
+  });
+  expect(container.querySelectorAll('video')).toHaveLength(1);
+  expect(container.querySelector('video')!.getAttribute('src')).toBe('blob:shared-preview');
 });
 
 it('merges same-repository cover credits while retaining external sources and attribution', () => {

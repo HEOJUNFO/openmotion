@@ -1,3 +1,4 @@
+import { IconButton } from "open-design-ui/icon-button";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useI18n } from "../../i18n/I18n";
 import { RemixIcon } from "../../icons/RemixIcons";
@@ -7,6 +8,7 @@ import { SpeedMenu } from "../../player/components/SpeedMenu";
 import { formatTime } from "../../player/lib/time";
 import { usePlayerStore } from "../../player/store/playerStore";
 import { AudioPreviewWaveform } from "./AudioPreviewWaveform";
+import { mediaCrossOriginForUrl } from "./mediaCrossOrigin";
 import "./audioPreview.css";
 
 export function MediaPreviewPlayer({ url, kind, name, autoPlay = true, waveform, onError }: {
@@ -14,6 +16,7 @@ export function MediaPreviewPlayer({ url, kind, name, autoPlay = true, waveform,
   waveform?: readonly number[]; onError?: () => void;
 }) {
   const audioMode = kind === "audio";
+  const mediaCrossOrigin = mediaCrossOriginForUrl(url);
   const { t } = useI18n();
   const media = useRef<HTMLMediaElement | null>(null);
   const [time, setTime] = useState(0);
@@ -55,8 +58,8 @@ export function MediaPreviewPlayer({ url, kind, name, autoPlay = true, waveform,
     <div className={`${audioMode ? "motion-audio-preview-surface " : ""}mx-3 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-md bg-[var(--motion-inset)]`}>
       {failed ? <p role="alert" className="text-step-12 text-text-2">{t("Preview failed to load")}</p>
         : kind === "image" ? <img src={url} alt={name} onError={() => setFailed(true)} className="h-full w-full object-contain" />
-        : kind === "video" ? <video ref={node => { media.current = node; }} src={url} autoPlay={autoPlay} playsInline muted={muted} loop={loop} disablePictureInPicture aria-label={name} className="h-full w-full object-contain" {...events} />
-        : <audio preload="metadata" ref={node => { media.current = node; }} src={url} autoPlay={autoPlay} muted={muted} loop={loop} aria-label={name} {...events} />}
+        : kind === "video" ? <video ref={node => { media.current = node; }} crossOrigin={mediaCrossOrigin} src={url} autoPlay={autoPlay} playsInline muted={muted} loop={loop} disablePictureInPicture aria-label={name} className="h-full w-full object-contain" {...events} />
+        : <audio preload="metadata" ref={node => { media.current = node; }} crossOrigin={mediaCrossOrigin} src={url} autoPlay={autoPlay} muted={muted} loop={loop} aria-label={name} {...events} />}
       {!failed && audioMode && (waveform ? <div className="motion-waveform-seek">
         <svg viewBox={`0 0 ${waveform.length * 5} 100`} preserveAspectRatio="none" aria-hidden="true">
           {waveform.map((height, index) => <rect key={index} x={index * 5} y={(100 - height) / 2} width={3} height={height} rx={1.5}
@@ -68,14 +71,14 @@ export function MediaPreviewPlayer({ url, kind, name, autoPlay = true, waveform,
       {!waveform && seek}
       <div className={audioMode ? "motion-player-control-row motion-player-control-row-lg" : "motion-player-control-row"}>
         <span className="whitespace-nowrap font-mono text-[11px] tabular-nums text-text-2">{formatTime(time)} / {formatTime(duration)}</span>
-        <Tooltip label={t(playing ? "Pause" : "Play")}><button type="button" aria-label={t(playing ? "Pause" : "Play")} onClick={toggle} disabled={failed}
-          className={`${audioMode ? "motion-audio-preview-play " : ""}flex h-7 w-8 items-center justify-center justify-self-center rounded-md hover:bg-hover disabled:opacity-30`}><RemixIcon name={playing ? "pause-fill" : "play-fill"} size={20} /></button></Tooltip>
+        <Tooltip label={t(playing ? "Pause" : "Play")}><IconButton variant="plain" type="button" aria-label={t(playing ? "Pause" : "Play")} onClick={toggle} disabled={failed}
+          className={`${audioMode ? "motion-audio-preview-play " : ""}flex h-7 w-8 items-center justify-center justify-self-center rounded-md hover:bg-hover disabled:opacity-30`} icon={<RemixIcon name={playing ? "pause-fill" : "play-fill"} size={20} />} /></Tooltip>
         <div className="motion-player-secondary flex min-w-0 items-center justify-self-end">
           <VolumeControl audioVolume={volume} audioMuted={muted} setAudioVolume={setVolume} setAudioMuted={setMuted} disabled={failed} />
           <span className="flex items-center gap-[inherit]">
             <SpeedMenu playbackRate={rate} setPlaybackRate={setRate} disabled={failed} />
-            <Tooltip label={t(loop ? "Disable loop playback" : "Enable loop playback")}><button type="button" aria-label={t(loop ? "Disable loop playback" : "Enable loop playback")} aria-pressed={loop} onClick={() => setLoop(!loop)} disabled={failed}
-              className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-hover"><RemixIcon name="repeat-line" size={16} /></button></Tooltip>
+            <Tooltip label={t(loop ? "Disable loop playback" : "Enable loop playback")}><IconButton variant="plain" type="button" aria-label={t(loop ? "Disable loop playback" : "Enable loop playback")} aria-pressed={loop} onClick={() => setLoop(!loop)} disabled={failed}
+              className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-hover" icon={<RemixIcon name="repeat-line" size={16} />} /></Tooltip>
           </span>
         </div>
       </div>

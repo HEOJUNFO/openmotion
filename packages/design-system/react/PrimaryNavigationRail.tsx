@@ -1,3 +1,4 @@
+import { Button } from 'open-design-ui/button';
 import { forwardRef, type ComponentPropsWithoutRef, type ReactNode } from 'react';
 
 interface PrimaryNavigationRailProps extends ComponentPropsWithoutRef<'nav'> {
@@ -15,6 +16,6 @@ export function PrimaryNavigationRail({ children, footer, className = '', ...pro
 
 export const PrimaryNavigationButton = forwardRef<HTMLButtonElement, ComponentPropsWithoutRef<'button'>>(
   function PrimaryNavigationButton({ className = '', type = 'button', ...props }, ref) {
-    return <button {...props} ref={ref} type={type} className={`om-primary-navigation-button ${className}`} />;
+    return <Button variant="plain" {...props} ref={ref} type={type} className={`om-primary-navigation-button ${className}`} />;
   },
 );

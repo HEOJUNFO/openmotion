@@ -1,9 +1,11 @@
+import { Button } from "open-design-ui/button";
 import { OverflowText } from "../ui/OverflowText";
 import { FieldTextarea, NativeSelect } from "../ui/FormField";
 import { useI18n } from "../../i18n/I18n";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { Plus, Type } from "../../icons/SystemIcons";
-import { isTextEditableSelection, type DomEditSelection } from "./domEditing";
+import { createTypingSave } from "../../utils/typingSave";
+import { getDomEditTargetKey, isTextEditableSelection, type DomEditSelection } from "./domEditing";
 import type { ImportedFontAsset, FontImportInput } from "./fontAssets";
 import { FIELD, LABEL, normalizeTextMetricValue, RESPONSIVE_GRID } from "./propertyPanelHelpers";
 import { MetricField, Section, SelectField } from "./propertyPanelPrimitives";
@@ -78,65 +80,78 @@ export function TextAreaField({
   autoFocus?: boolean;
   flat?: boolean;
   boxed?: boolean;
-  onCommit: (nextValue: string) => void;
+  onCommit: (nextValue: string) => unknown;
 }) {
   const { t } = useI18n();
   const track = useTrackDesignInput();
   const [draft, setDraft] = useState(value);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const interactionChangedRef = useRef(false);
+  const [queue] = useState(createTypingSave);
+  const composing = useRef(false);
   const focusedRef = useRef(false);
-  const valueRef = useRef(value);
-  valueRef.current = value;
+  const lastInput = useRef(value);
+  // A completed request can leave an unsaved draft even though the queue is idle.
+  const failedDraft = useRef<string | null>(null);
+  const accepted = useRef(value);
+  accepted.current = value;
 
   useEffect(() => {
-    if (focusedRef.current) return;
+    if (composing.current || queue.busy() || failedDraft.current !== null) return;
+    lastInput.current = value;
     setDraft(value);
-  }, [value]);
-  useEffect(
-    () => () => {
-      if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
-    },
-    [],
-  );
+  }, [value, queue]);
+  useEffect(() => () => { void queue.flush(); }, [queue]);
   useEffect(() => {
-    if (!autoFocus) return;
-    textareaRef.current?.focus();
+    if (autoFocus) textareaRef.current?.focus();
   }, [autoFocus]);
 
-  const commitDraft = (d: string) => {
-    if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
-    if (interactionChangedRef.current) {
-      interactionChangedRef.current = false;
-      track("text", label);
+  const schedule = (text: string) => {
+    const retry = failedDraft.current === text;
+    if (!retry && text === lastInput.current) return;
+    failedDraft.current = null;
+    lastInput.current = text;
+    if (!retry && text === accepted.current && !queue.writing()) {
+      queue.cancel();
+      return;
     }
-    if (d !== valueRef.current) onCommit(d);
-  };
-  const scheduleCommit = (d: string) => {
-    if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
-    commitTimerRef.current = setTimeout(() => {
-      if (d !== valueRef.current) {
-        if (interactionChangedRef.current) {
-          interactionChangedRef.current = false;
-          track("text", label);
-        }
-        onCommit(d);
+    queue.schedule(async () => {
+      track("text", label);
+      let result: unknown;
+      try {
+        result = await onCommit(text);
+      } catch {
+        result = false;
       }
-    }, 120);
+      const outcome = typeof result === "object" ? result : null;
+      if (outcome && "reason" in outcome && outcome.reason === "preview-stale") {
+        queue.cancel();
+        failedDraft.current = null;
+        lastInput.current = accepted.current;
+        setDraft(accepted.current);
+      } else if (result === false || result === null || (outcome && "ok" in outcome && outcome.ok === false)) {
+        if (lastInput.current === text) failedDraft.current = text;
+      }
+    });
   };
-
-  const handleFocus = () => {
-    focusedRef.current = true;
-  };
-  const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-    setDraft(e.target.value);
-    interactionChangedRef.current = true;
-    scheduleCommit(e.target.value);
+  const handleFocus = () => { focusedRef.current = true; };
+  const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    const text = event.currentTarget.value;
+    setDraft(text);
+    if (!composing.current) schedule(text);
   };
   const handleBlur = () => {
     focusedRef.current = false;
-    commitDraft(draft);
+    if (composing.current) return;
+    if (failedDraft.current !== null) schedule(failedDraft.current);
+    void queue.flush();
+  };
+  const compositionHandlers = {
+    onCompositionStart: () => { composing.current = true; },
+    onCompositionEnd: (event: React.CompositionEvent<HTMLTextAreaElement>) => {
+      composing.current = false;
+      schedule(event.currentTarget.value);
+      if (!focusedRef.current) void queue.flush();
+    },
   };
 
   if (flat) {
@@ -152,6 +167,7 @@ export function TextAreaField({
           rows={2}
           aria-label={t(label)}
           style={boxed ? { outline: "none" } : undefined}
+          {...compositionHandlers}
           onFocus={handleFocus}
           onChange={handleChange}
           onBlur={handleBlur}
@@ -170,6 +186,7 @@ export function TextAreaField({
           value={draft}
           disabled={disabled}
           rows={4}
+          {...compositionHandlers}
           onFocus={handleFocus}
           onChange={handleChange}
           onBlur={handleBlur}
@@ -328,7 +345,7 @@ function TextFieldEditor({
           <div className="text-[10px] text-neutral-500">{field.tagName}</div>
         </div>
         {showRemove && (
-          <button
+          <Button variant="plain"
             type="button"
             onClick={() => {
               track("button", "Remove text field");
@@ -336,7 +353,7 @@ function TextFieldEditor({
             }}
             className="inline-flex h-7 shrink-0 items-center rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 text-[11px] font-medium text-neutral-300 transition-colors hover:border-neutral-600 hover:text-text-0"
           >
-            {t("Remove")}</button>
+            {t("Remove")}</Button>
         )}
       </div>
       <PromotableControl channel={{ kind: "text" }} enabled={field.source === "self"}>
@@ -454,6 +471,7 @@ export function TextSection({
   if (textFields.length === 1) {
     const content = (
       <TextFieldEditor
+        key={JSON.stringify([getDomEditTargetKey(element), activeField.key])}
         field={activeField}
         styles={styles}
         fontAssets={fontAssets}
@@ -477,7 +495,7 @@ export function TextSection({
       <div className="grid gap-1.5">
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
           <span className={LABEL}>{t("Text layers")}</span>
-          <button
+          <Button variant="plain"
             type="button"
             onClick={() => {
               track("button", "Add text field");
@@ -489,13 +507,13 @@ export function TextSection({
           >
             <Plus size={12} className="shrink-0" />
             <span className="truncate">{t("Add text")}</span>
-          </button>
+          </Button>
         </div>
         <div className="grid gap-2">
           {textFields.map((field, index) => {
             const active = field.key === activeField.key;
             return (
-              <button
+              <Button variant="plain"
                 key={field.key}
                 type="button"
                 onClick={() => setActiveTextFieldKey(field.key)}
@@ -519,12 +537,13 @@ export function TextSection({
                     {field.tagName}
                   </span>
                 </div>
-              </button>
+              </Button>
             );
           })}
         </div>
       </div>
       <TextFieldEditor
+        key={JSON.stringify([getDomEditTargetKey(element), activeField.key])}
         field={activeField}
         styles={styles}
         fontAssets={fontAssets}

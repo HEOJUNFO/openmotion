@@ -1,3 +1,5 @@
+import { IconButton } from "open-design-ui/icon-button";
+import { Button } from "open-design-ui/button";
 import { PropertyLabel } from "./PropertyLabel";
 import { Tooltip } from "../ui/Tooltip";
 import { RemixIcon } from "../../icons/RemixIcons";
@@ -82,7 +84,7 @@ export function FlatRow({
         </span>
         {suffix}
         {tier === "explicitCustom" && onReset && (
-          <Tooltip label={t("Remove and fall back to default")} wrap><button aria-label={t("Remove and fall back to default")}
+          <Tooltip label={t("Remove and fall back to default")} wrap><IconButton variant="plain" aria-label={t("Remove and fall back to default")}
             type="button"
             data-flat-row-reset="true"
             onClick={() => {
@@ -90,9 +92,8 @@ export function FlatRow({
               onReset();
             }}
             className="shrink-0 text-panel-text-3 opacity-0 transition-opacity hover:text-panel-text-1 group-hover:opacity-100"
-          >
-            <RotateCcw size={11} />
-          </button></Tooltip>
+            icon={<RotateCcw size={11} />}
+          /></Tooltip>
         )}
         {dropdown && (
           <RemixIcon name="arrow-down-s-line" size={14} className="shrink-0 text-panel-text-5" />
@@ -141,7 +142,7 @@ export function FlatSegmentedRow({
       <span className="flex shrink-0 items-center gap-0.5">
         {options.map((option, index) => (
           <span key={option.key} className="flex items-center">
-            <Tooltip label={typeof option.node === "string" ? undefined : t(option.label)} wrap><button
+            <Tooltip label={typeof option.node === "string" ? undefined : t(option.label)} wrap><Button variant="plain"
               type="button"
               data-flat-segment="true"
               data-flat-segment-filled={filled ? "true" : undefined}
@@ -161,7 +162,7 @@ export function FlatSegmentedRow({
               }`}
             >
               {typeof option.node === "string" ? t(option.node) : option.node}
-            </button></Tooltip>
+            </Button></Tooltip>
             {spacerAfterIndex === index && <span className="w-3" aria-hidden="true" />}
           </span>
         ))}
@@ -207,7 +208,7 @@ export function FlatGroupHeader({
   const { t } = useI18n();
   if (!isOpen) {
     return (
-      <button
+      <Button variant="plain"
         type="button"
         data-flat-group-collapsed="true"
         onClick={onToggleOpen}
@@ -222,7 +223,7 @@ export function FlatGroupHeader({
           )}
         </span>
         <RemixIcon name="arrow-right-s-line" size={14} className="shrink-0 text-panel-text-5" />
-      </button>
+      </Button>
     );
   }
 
@@ -233,9 +234,7 @@ export function FlatGroupHeader({
       <span className="text-[12px] font-semibold text-panel-text-0">{t(title)}</span>
       <span className="flex items-center gap-2.5 text-panel-text-5">
         {accessory}
-        <Tooltip label={t("Collapse")} wrap><button aria-label={t("Collapse")} type="button" onClick={onToggleOpen} className="text-panel-text-3">
-          <RemixIcon name="arrow-down-s-line" size={14} />
-        </button></Tooltip>
+        <Tooltip label={t("Collapse")} wrap><IconButton variant="plain" aria-label={t("Collapse")} type="button" onClick={onToggleOpen} className="text-panel-text-3" icon={<RemixIcon name="arrow-down-s-line" size={14} />} /></Tooltip>
       </span>
     </div>
   );
@@ -584,7 +583,7 @@ export function FlatSlider({
       {(centerTick || onReset) && (
         <span data-flat-slider-reset-slot="true" className="w-3.5 shrink-0">
           {tier === "explicitCustom" && onReset && (
-            <Tooltip label={t("Remove and fall back to default")} wrap><button aria-label={t("Remove and fall back to default")}
+            <Tooltip label={t("Remove and fall back to default")} wrap><IconButton variant="plain" aria-label={t("Remove and fall back to default")}
               type="button"
               data-flat-slider-reset="true"
               disabled={disabled}
@@ -593,9 +592,8 @@ export function FlatSlider({
                 onReset();
               }}
               className="text-panel-text-3 hover:text-panel-text-1 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <RotateCcw size={11} />
-            </button></Tooltip>
+              icon={<RotateCcw size={11} />}
+            /></Tooltip>
           )}
         </span>
       )}

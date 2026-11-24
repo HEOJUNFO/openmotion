@@ -19,6 +19,22 @@ function Trigger() { const gateway = useMediaGateway(); return <button onClick={
 function button(text: string) { const found = Array.from(document.querySelectorAll('button')).find(el => el.textContent === text); if (!found) throw new Error('Missing ' + text); return found; }
 function type(selector: string, value: string) { const el = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(selector)!; Object.getOwnPropertyDescriptor(el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, 'value')!.set!.call(el, value); el.dispatchEvent(new Event('input', { bubbles: true })); }
 
+it('reports file picker failures via the shared floating Toast', async () => {
+  usePlayerStore.setState({ timelineProjectId: 'project' });
+  const fileDrop = vi.fn().mockRejectedValue(new Error('This file format is not supported.'));
+  const host = document.createElement('div');
+  document.body.append(host);
+  root = createRoot(host);
+  await act(async () => root!.render(<I18nProvider initialLocale="en"><MediaGatewayProvider>
+    <MotionTimelineMedia projectId="project" compositionId="main" disabled={false} onFileDrop={fileDrop} />
+  </MediaGatewayProvider></I18nProvider>));
+  const input = host.querySelector<HTMLInputElement>('input[type="file"]')!;
+  Object.defineProperty(input, 'files', { value: [new File(['test'], 'invalid.png', { type: 'image/png' })] });
+  await act(async () => input.dispatchEvent(new Event('change', { bubbles: true })));
+  expect(fileDrop).toHaveBeenCalledOnce();
+  expect(document.querySelector('.hf-toast-viewport [role="alert"]')?.textContent).toBe('This file format is not supported.');
+});
+
 it('hides the empty guide during generation, restores it on close, and removes it after placement until undo', async () => {
   usePlayerStore.setState({ timelineProjectId: 'project', timelineReady: true, duration: 6 });
   const job = { id: 'completed', projectId: 'project', state: 'completed', prompt: 'a forest', model,
@@ -66,7 +82,7 @@ it('generates for its own project while another project is globally active, then
     if (url.includes('models/capabilities')) return Response.json({ providers: [{ id: 'codex', available: true }], agents: [], routes: {}, capabilities: [] });
     if (url.includes('/models?')) return Response.json({ models: [model], nextOffset: null });
     if (url.includes('project/status')) return Response.json({ projectId: url.includes('projectId=native-project') ? 'native-project' : 'workspace-project' });
-    if (url.endsWith('/generations') && init?.method === 'POST') {
+    if ((url.endsWith('/generations') || url.endsWith('/models/generate')) && init?.method === 'POST') {
       submitted = JSON.parse(init.body as string);
       const job = { id: 'job-1', projectId: 'native-project', state: 'queued', prompt: 'a forest', model, modality: 'image', parameters: {}, createdAt: 1, updatedAt: 1, requestHash: 'hash', assets: [] } as GenerationJob;
       jobs.push(job); return Response.json({ job });
@@ -103,7 +119,7 @@ it('edits a reference with a supported model, preserves placement and applies on
     if (url.includes('models/capabilities')) return Response.json({ providers: [{ id: 'codex', available: true }, { id: 'fal', available: true }], routes: { image: 'fal:flux' } });
     if (url.includes('/models?')) return Response.json({ models: [{ ...model, supportsImageReference: true }, { ...model, id: 'fal:flux', provider: 'fal', label: 'Flux' }], nextOffset: null });
     if (url.includes('project/status')) return Response.json({ projectId: 'native' });
-    if (url.endsWith('/generations') && init?.method === 'POST') {
+    if ((url.endsWith('/generations') || url.endsWith('/models/generate')) && init?.method === 'POST') {
       submitted = JSON.parse(init.body as string);
       const job = { id: 'edited-image', projectId: 'native', state: 'completed', model, prompt: 'golden sunset', reference: { path: reference.path, sha256: 'test', mimeType: 'image/png', bytes: 20 }, assets: [{ path: 'assets/generated/sunset.png', mimeType: 'image/png', bytes: 20 }] } as GenerationJob;
       jobs.push(job); return Response.json({ job });

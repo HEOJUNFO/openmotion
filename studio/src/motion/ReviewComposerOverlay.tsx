@@ -1,3 +1,4 @@
+import { Button } from 'open-design-ui/button';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePreviewOverlayContext } from '../components/editor/PreviewOverlayProvider';
 import { IconButton } from '../components/ui';
@@ -57,7 +58,7 @@ export function ReviewComposerOverlay() {
       onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') cancel(); if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); const rect = event.currentTarget.getBoundingClientRect(); place(rect.left + rect.width / 2, rect.top + rect.height / 2); } }} />}
     {drafting && !composerOpen && <div className="motion-review-hint absolute left-1/2 top-2 flex max-w-full -translate-x-1/2 items-center gap-2 rounded-full px-3 py-1 text-step-11" role="status">
       {atFrame ? <span className="truncate">{t(mode === 'annotate' ? 'Draw on the frame. Release to comment.' : 'Click the frame to comment')}</span>
-        : <button className="pointer-events-auto truncate" onClick={() => { if (!frame) return; usePlayerStore.getState().requestPlayback(false); setActiveCompPath(frame.compositionPath); usePlayerStore.getState().requestSeek(frame.time ?? 0); }}>{t('Return to annotated frame')}</button>}
+        : <Button variant="plain" className="pointer-events-auto truncate" onClick={() => { if (!frame) return; usePlayerStore.getState().requestPlayback(false); setActiveCompPath(frame.compositionPath); usePlayerStore.getState().requestSeek(frame.time ?? 0); }}>{t('Return to annotated frame')}</Button>}
       <IconButton className="pointer-events-auto shrink-0" size="sm" aria-label={t('Cancel')} disabled={busy} icon={<RemixIcon name="close-line" size={14} />} onClick={cancel} />
     </div>}
     {drafting && composerOpen && atFrame && <svg className="absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">

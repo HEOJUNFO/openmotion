@@ -9,7 +9,7 @@ import { RenderQueueItem } from "./RenderQueueItem";
 import { FfmpegRequiredNotice } from "./FfmpegRequiredNotice";
 import type { FfmpegStatus } from "./useFfmpegStatus";
 import { Button } from "open-design-ui/button";
-import { IconButton } from "../ui/IconButton";
+import { IconButton } from "open-design-ui/icon-button";
 import { Select, type SelectOption } from "../ui/Select";
 import { Tooltip } from "../ui/Tooltip";
 import { Popover } from "../ui/Popover";
@@ -21,11 +21,20 @@ import {
   getRenderFpsOptions,
   getPersistedRenderSettings,
   persistRenderSettings,
+  getBrowserExportEnabled,
+  setBrowserExportEnabled,
   resolveRenderFormat,
   startConfiguredRender,
   isRenderExportBlocked,
 } from "./renderSettings";
 import { GpuEncodingToggle } from "./GpuEncodingToggle";
+import { BrowserExportToggle } from "./BrowserExportToggle";
+import {
+  ISOLATED_PREVIEW_EXPORT_REASON,
+  isBrowserWebCodecsSupported,
+  isIsolatedPreviewIframe,
+} from "../../render/browserExportPreflight";
+import { useLivePreviewIframe } from "../../player/store/previewIframeStore";
 import { GifLoopInput, isInvalidGifLoop } from "./GifLoopInput";
 import { trackStudioEvent } from "../../utils/studioTelemetry";
 import { clickMethod, trackStudioClick } from "../../motion/editorTracking";
@@ -43,6 +52,7 @@ export type StartRenderHandler = (
   fps: 24 | 30 | 60,
   gpu?: boolean,
   gifLoop?: number,
+  engine?: "server" | "browser",
 ) => void | Promise<void>;
 
 export interface RenderQueueProps {
@@ -56,6 +66,8 @@ export interface RenderQueueProps {
   onStartRender: StartRenderHandler;
   isRendering: boolean;
   emptyComposition?: boolean;
+  /** False when the user selected a composition other than the one open in preview. */
+  canBrowserExport?: boolean;
   /** History fetch failure (null when the last load succeeded). */
   loadError?: string | null;
   /** Retry a failed history load. */
@@ -166,10 +178,8 @@ function FormatInfoTooltip() {
   return <Popover openOnHover modal={false} container={null} side="top" initialFocus={false}
     aria-label={t("About video formats")}
     className="studio-tooltip rounded-md px-3 py-2 shadow-menu max-w-[min(300px,calc(100vw-16px))] whitespace-normal break-words"
-    trigger={<button type="button" aria-label={t("About video formats")}
-      className="flex items-center justify-center p-0.5 -m-0.5 rounded-sm text-text-5 hover:text-text-3 transition-colors cursor-help outline-hidden focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-accent">
-      <RemixIcon name="question-line" size={14} />
-    </button>}>
+    trigger={<IconButton variant="plain" type="button" aria-label={t("About video formats")}
+      className="flex items-center justify-center p-0.5 -m-0.5 rounded-sm text-text-5 hover:text-text-3 transition-colors cursor-help outline-hidden focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-accent" icon={<RemixIcon name="question-line" size={14} />} />}>
     <span className="block font-semibold">{t("About video formats")}</span>
     <span className="mt-1 block whitespace-pre-line font-normal leading-normal">{description}</span>
   </Popover>;
@@ -193,6 +203,7 @@ function FormatExportButton({
   isRendering,
   separateExport = false,
   emptyComposition = false,
+  canBrowserExport = true,
   compositionDimensions,
   lastRenderDurationMs,
   ffmpeg,
@@ -203,6 +214,7 @@ function FormatExportButton({
   isRendering: boolean;
   separateExport?: boolean;
   emptyComposition?: boolean;
+  canBrowserExport?: boolean;
   compositionDimensions?: CompositionDimensions | null;
   lastRenderDurationMs?: number;
   ffmpeg: FfmpegStatus | null;
@@ -213,6 +225,7 @@ function FormatExportButton({
   const persisted = getPersistedRenderSettings();
   const mvp = useMvpEditor();
   const projectId = useStudioShellContextOptional()?.projectId;
+  const previewIframe = useLivePreviewIframe();
   const [format, setFormat] = useState<"mp4" | "webm" | "mov" | "gif">(persisted.format);
   const [quality, setQuality] = useState<"draft" | "standard" | "high">(persisted.quality);
   const [resolution, setResolution] = useState<RenderScale>("auto");
@@ -220,6 +233,19 @@ function FormatExportButton({
   const [requestedFps, setFps] = useState<24 | 30 | 60>(persisted.fps);
   const fps = resolveRenderFps(format, requestedFps);
   const [gpu, setGpu] = useState(persisted.gpu);
+  const [browserExport, setBrowserExport] = useState(getBrowserExportEnabled);
+  const webCodecsSupported = isBrowserWebCodecsSupported();
+  const previewIsolated = isIsolatedPreviewIframe(previewIframe);
+  const browserExportSupported = webCodecsSupported && !previewIsolated && canBrowserExport;
+  const browserExportUnsupportedReason = !webCodecsSupported
+    ? "WebCodecs VideoEncoder is unavailable in this browser."
+    : previewIsolated
+      ? ISOLATED_PREVIEW_EXPORT_REASON
+      : !canBrowserExport
+        ? "Browser export only applies to the currently open composition."
+        : undefined;
+  const usingBrowserExport =
+    browserExport && browserExportSupported && (format === "mp4" || format === "webm");
   const [gifLoop, setGifLoop] = useState("0");
   const loopCount = mvp ? 0 : Number(gifLoop);
   const invalidGifLoop = !mvp && isInvalidGifLoop(format, gifLoop);
@@ -228,7 +254,7 @@ function FormatExportButton({
   // probe gave no answer, and refusing to export on no answer would break
   // setups that are perfectly fine. Holding the narrowed value rather than a
   // boolean keeps the notice from re-testing what this line already decided.
-  const missingFfmpeg = ffmpeg && !ffmpeg.ok ? ffmpeg : null;
+  const missingFfmpeg = !usingBrowserExport && ffmpeg && !ffmpeg.ok ? ffmpeg : null;
   const exportBlocked = emptyComposition || isRenderExportBlocked(isRendering, missingFfmpeg !== null, invalidGifLoop);
 
   // MOV (ProRes) is a fixed-quality codec — quality selector has no effect.
@@ -327,6 +353,17 @@ function FormatExportButton({
           }}
         />
       )}
+      <BrowserExportToggle
+        format={format}
+        checked={browserExport}
+        disabled={isRendering}
+        supported={browserExportSupported}
+        unsupportedReason={browserExportUnsupportedReason}
+        onToggle={(next) => {
+          setBrowserExport(next);
+          setBrowserExportEnabled(next);
+        }}
+      />
       </details>
       <Button
         variant="primary"
@@ -349,6 +386,7 @@ function FormatExportButton({
             fps,
             gpu: mvp ? false : gpu,
             gifLoop: loopCount,
+            engine: usingBrowserExport ? "browser" : undefined,
           });
         }}
         // Width only. A type size or a weight here would win the merge against
@@ -375,6 +413,7 @@ export const RenderQueue = memo(function RenderQueue({
   onStartRender,
   isRendering,
   emptyComposition = false,
+  canBrowserExport = true,
   loadError,
   onRetryLoad,
   actionError,
@@ -408,6 +447,7 @@ export const RenderQueue = memo(function RenderQueue({
       <div className={`px-3 pb-3 border-b border-border shrink-0 ${mvp ? "pt-1" : "pt-3"}`}>
         <FormatExportButton
           emptyComposition={emptyComposition}
+          canBrowserExport={canBrowserExport}
           onStartRender={onStartRender}
           isRendering={isRendering}
           separateExport={!isRendering && jobs.some(job => job.status === "unknown" && job.workerActive === false)}

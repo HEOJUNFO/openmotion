@@ -1,3 +1,4 @@
+import { IconButton } from "open-design-ui/icon-button";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
 import { useEffect, useRef, useState } from "react";
@@ -292,18 +293,17 @@ export function Transform3DCube({
           ))}
       </svg>
       {onRecenter && (
-        <button
+        <IconButton variant="plain"
           type="button"
           onClick={onRecenter}
           title={t("Reset 3D orientation")}
           aria-label={t("Reset 3D orientation")}
           className="absolute right-1.5 top-1.5 rounded-sm p-0.5 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200"
-        >
-          <RemixIcon name="focus-3-line" size={13} />
-        </button>
+          icon={<RemixIcon name="focus-3-line" size={13} />}
+        />
       )}
       {onKeyframe && (
-        <button
+        <IconButton variant="plain"
           type="button"
           onClick={onKeyframe}
           title={
@@ -316,9 +316,8 @@ export function Transform3DCube({
           className={`absolute left-1.5 top-1.5 rounded p-0.5 hover:bg-neutral-800 ${
             keyframed ? "text-accent-ink" : "text-neutral-500 hover:text-neutral-200"
           }`}
-        >
-          <RemixIcon name={keyframed ? "poker-diamonds-fill" : "poker-diamonds-line"} size={12} />
-        </button>
+          icon={<RemixIcon name={keyframed ? "poker-diamonds-fill" : "poker-diamonds-line"} size={12} />}
+        />
       )}
     </div>
   );

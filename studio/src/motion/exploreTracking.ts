@@ -1,5 +1,5 @@
 // Reports for Explore, the top creative navigation and the creative Studio pages (Design, Cinema, Sound,
-// Motion landing, model overview and API). They follow the page_name + area + element convention of the
+// Motion landing and model overview). They follow the page_name + area + element convention of the
 // other page reporters. Destinations are catalogue ids only; prompts, example copy and model labels never leave the browser.
 import type { StudioDestination } from './creativeStudios';
 import { embeddedView, modelFields, newTrackingId, optionId, send, slugField, type Fields } from './reporting';
@@ -34,7 +34,7 @@ export function reportCreativeClick(page: CreativePage, area: CreativeArea, elem
   send('ui_click', { page_name: page, area, element, ...targetFields(target) });
 }
 
-type ViewPage = Extract<CreativePage, 'explore' | 'creative_studio' | 'api' | 'model_overview'>;
+type ViewPage = Extract<CreativePage, 'explore' | 'creative_studio' | 'model_overview'>;
 export function reportCreativePageView(page: ViewPage, hasProject: boolean, target: CreativeTarget & { landing?: boolean } = {}) {
   const { studio, scene, model, community, medium, landing } = target;
   send('page_view', { page_name: page, view_id: newTrackingId(), embedded: embeddedView(), has_project: hasProject,

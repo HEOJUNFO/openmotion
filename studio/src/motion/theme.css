@@ -136,7 +136,7 @@ button, input, select, textarea { font-family: inherit; }
 .motion-studio-header .motion-button { height: 28px; padding: 0 9px; font-size: var(--motion-text-xs); }
 .motion-studio-header [data-testid="header-export"] { background: var(--motion-action); color: var(--motion-on-action); }
 .motion-studio-header [data-testid="header-export"]:enabled:hover { background: var(--motion-action-hover); }
-:root[data-motion-studio] .motion-player-controls .motion-player-play:enabled { color: var(--motion-action); }
+:root[data-motion-studio] .motion-player-controls .motion-player-play:enabled { color: var(--motion-accent); }
 :root[data-motion-studio] .motion-player-play svg { fill: currentColor; }
 @media(max-width: 1100px) {
   .motion-studio-header { gap: 12px; padding-inline: 12px; }

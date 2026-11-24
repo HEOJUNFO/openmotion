@@ -1,3 +1,5 @@
+import { Button } from "open-design-ui/button";
+import { IconButton } from "open-design-ui/icon-button";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { useI18n } from "../../i18n/I18n";
@@ -37,7 +39,7 @@ export function PropertyPanelFlatFooter({
     // `position: sticky` anymore, so there's no rounding seam to seal (see
     // p11-scrollable-open-section-report.md).
     <div className="flex items-center justify-between bg-panel-bg px-4 py-[11px]">
-      <button
+      <Button variant="plain"
         type="button"
         data-flat-footer-ask="true"
         onClick={(event) => {
@@ -49,9 +51,9 @@ export function PropertyPanelFlatFooter({
         className="flex items-center gap-[7px] text-[11px] font-medium text-panel-text-2 disabled:cursor-not-allowed"
       >
         <RemixIcon name="sparkling-line" size={14} className="text-accent-ink" />
-        {t("Ask agent about this element")}</button>
+        {t("Ask agent about this element")}</Button>
       {!mvp && onToggleRecording && (
-        <button
+        <IconButton variant="plain"
           type="button"
           data-flat-footer-record="true"
           aria-label={recordTitle}
@@ -62,9 +64,8 @@ export function PropertyPanelFlatFooter({
             onToggleRecording();
           }}
           className={recording ? "text-danger-ink animate-pulse" : "text-danger-ink"}
-        >
-          <RemixIcon name={recording ? "stop-fill" : "checkbox-blank-circle-fill"} size={14} />
-        </button>
+          icon={<RemixIcon name={recording ? "stop-fill" : "checkbox-blank-circle-fill"} size={14} />}
+        />
       )}
     </div>
   );

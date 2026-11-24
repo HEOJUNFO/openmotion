@@ -83,10 +83,10 @@ it('shows all Black Friday templates in one masonry gallery and previews them in
   expect(banner.querySelector('h1')?.textContent).toBe('Black Friday');
   expect(button('Back to Explore', banner)).toBeTruthy();
   expect(banner.querySelectorAll('button')).toHaveLength(1);
-  expect(cards()).toHaveLength(10);
+  expect(cards()).toHaveLength(59);
   const galleries = host.querySelectorAll('[data-black-friday] .om-gallery-masonry');
   expect(galleries).toHaveLength(1);
-  expect(galleries[0].querySelectorAll(':scope > .om-gallery-card')).toHaveLength(10);
+  expect(galleries[0].querySelectorAll(':scope > .om-gallery-card')).toHaveLength(59);
   expect(galleries[0].querySelector('.om-gallery-avatar')).toBeNull();
   expect(galleries[0].querySelector('.om-gallery-card-caption small')?.textContent).toBe('Zzz_Futurist');
   expect([...host.querySelectorAll('[data-black-friday] h2')].map(heading => heading.textContent)).toEqual(['Black Friday templates']);
@@ -98,14 +98,14 @@ it('shows all Black Friday templates in one masonry gallery and previews them in
   expect(host.querySelector('header .om-gallery-page-label, header .om-gallery-header-actions')).toBeNull();
   const all = button('All', filters);
   expect(filters.querySelector('button[aria-pressed="true"]')).toBe(all);
-  for (const [label, count] of [['Before the sale', 2], ['Sale launch', 6], ['Cyber Monday and last call', 2]] as const) {
+  for (const [label, count] of [['Before the sale', 5], ['Sale launch', 48], ['Cyber Monday and last call', 6]] as const) {
     const stage = button(label, filters);
     await act(async () => stage.click());
     expect([...filters.querySelectorAll('button[aria-pressed="true"]')]).toEqual([stage]);
     expect(cards()).toHaveLength(count);
   }
   await act(async () => all.click());
-  expect(cards()).toHaveLength(10);
+  expect(cards()).toHaveLength(59);
   const playback = observer();
   const visibleCards = playback.elements.slice(0, 2);
   act(() => playback.emit(1, visibleCards));
@@ -119,13 +119,13 @@ it('shows all Black Friday templates in one masonry gallery and previews them in
   await act(async () => button('Next template', detail).click());
   expect(current()).toBe('Agentcard | Black-and-Gold Type and Card Launch');
   await act(async () => button('Next template', detail).click());
-  expect(current()).toBe('Black Friday | Text-led SaaS Promotion');
+  expect(current()).toBe('Black Friday | Adobe — Illustrated A Monogram');
   await act(async () => button('Close template preview', detail).click());
   await act(async () => button('Back to Explore').click());
   expect(onClose).toHaveBeenCalledOnce();
 });
 
-it('hides the project return only when the same template is opened from Black Friday', async () => {
+it('omits the project return in both the template library and Black Friday details', async () => {
   sessionStorage.setItem('motion.template-handoff.preview', '1');
   const template = { ...items[1], id: 'black-friday-a5238e113514', title: 'Black Friday | 3D Type and Product Reveal' };
   fetchItems([template]);
@@ -136,7 +136,7 @@ it('hides the project return only when the same template is opened from Black Fr
     const detail = host.querySelector<HTMLDialogElement>('dialog[aria-label="Template preview"]')!;
     expect(detail.open).toBe(true);
     expect(current()).toBe(template.title);
-    expect(Boolean(button('Back to current project', detail))).toBe(!blackFriday);
+    expect(button('Back to current project', detail)).toBeUndefined();
     await act(async () => button('Close template preview', detail).click());
   }
 });
@@ -144,7 +144,7 @@ it('hides the project return only when the same template is opened from Black Fr
 it('keeps the search in the header and preserves filters when clearing the keyword', async () => {
   await mount();
   expect(host.querySelectorAll('input[type=search]')).toHaveLength(1);
-  expect(searchInput().closest('header')?.querySelector('a[href*="github.com"]')).not.toBeNull();
+  expect(searchInput().closest('header')?.querySelector('a[href*="github.com"]')).toBeNull();
   await act(async () => button('Brand & company films').click());
   await search('not-here');
   await confirmSearch();
@@ -167,7 +167,7 @@ it('opens the reference-link form from each category without changing browsing o
   const intro = host.querySelector('.om-gallery-intro')!;
   const trigger = button(actionLabel, intro);
   const actions = intro.querySelector('.om-gallery-intro-actions')!;
-  expect(actions.querySelector('a')?.textContent).toBe('Submit video');
+  expect(actions.querySelector('a')?.textContent).toBe('Submit template');
   expect(actions.querySelector('a')?.classList.contains('om-gallery-submit')).toBe(true);
   expect(button('Surprise me', actions).classList.contains('om-gallery-surprise')).toBe(true);
   expect(actions.nextElementSibling?.contains(trigger)).toBe(true);
@@ -303,11 +303,14 @@ it('prepares link and local-video instructions, retains drafts and distinguishes
   await act(async () => picker.dispatchEvent(new Event('change', { bubbles: true })));
   expect(button('Copy request', recovery()).disabled).toBe(true);
   const upload = Promise.withResolvers<Response>();
-  vi.mocked(fetch).mockReturnValueOnce(upload.promise);
+  vi.mocked(fetch)
+    .mockResolvedValueOnce(Response.json({ uploadId: 'upl-ref', uploadUrl: 'https://s3.example.test/upl-ref', method: 'PUT', headers: { 'Content-Type': 'video/mp4' } }, { status: 201 }))
+    .mockReturnValueOnce(upload.promise)
+    .mockResolvedValueOnce(Response.json({ state: 'committed', asset }));
   await act(async () => picker.dispatchEvent(new Event('change', { bubbles: true })));
   expect(button('Copy request', recovery()).disabled).toBe(true);
-  expect(fetch).toHaveBeenLastCalledWith(expect.stringContaining('modality=video'), expect.objectContaining({ body: file }));
-  await act(async () => upload.resolve(Response.json({ asset })));
+  expect(fetch).toHaveBeenLastCalledWith('https://s3.example.test/upl-ref', expect.objectContaining({ method: 'PUT', body: file }));
+  await act(async () => upload.resolve(new Response('', { status: 200 })));
   expect(button('Copy request', recovery()).disabled).toBe(false);
   expect(button('Replace video', recovery())).toBeDefined();
   expect(recovery().textContent).toContain(file.name);
@@ -345,14 +348,17 @@ it('retains the selected video and notes while changing the search or a category
   const picker = recovery().querySelector<HTMLInputElement>('input[type=file]')!;
   Object.defineProperty(picker, 'files', { value: [video] });
   const upload = Promise.withResolvers<Response>();
-  vi.mocked(fetch).mockReturnValueOnce(upload.promise);
+  const asset = { id: 'reference-asset', modality: 'video', currentVersionId: 'original', versions: [{ id: 'original' }] };
+  vi.mocked(fetch)
+    .mockResolvedValueOnce(Response.json({ uploadId: 'upl-2', uploadUrl: 'https://s3.example.test/upl-2', method: 'PUT', headers: { 'Content-Type': 'video/mp4' } }, { status: 201 }))
+    .mockReturnValueOnce(upload.promise)
+    .mockResolvedValueOnce(Response.json({ state: 'committed', asset }));
   await act(async () => picker.dispatchEvent(new Event('change', { bubbles: true })));
 
   searchInput().focus();
   await search('still missing');
   expect(recovery()).toBeNull();
-  const asset = { id: 'reference-asset', modality: 'video', currentVersionId: 'original', versions: [{ id: 'original' }] };
-  await act(async () => upload.resolve(Response.json({ asset })));
+  await act(async () => upload.resolve(new Response('', { status: 200 })));
   expect(events('studio_asset_import_result').at(-1)).toMatchObject({
     outcome: 'success', result_set_id: initialResult.result_set_id,
   });
@@ -537,7 +543,7 @@ it('copies the shared brief, retains guides and gates editable-project opening',
   await act(async () => button('复刻模板').click());
   expect(host.querySelector('dialog[aria-label=复刻模板]')).toBeNull();
   expect(document.querySelector('[data-feedback-layer]')?.textContent).toContain('已复制，发给 Agent 即可。');
-  expect(navigator.clipboard.writeText).toHaveBeenCalledWith('使用说明：请使用 OpenMotion 插件。如未安装，请按 `https://github.com/nexu-io/openmotion` 安装并接入后继续。\n指定模板：First（one）\n创作要求：基于模板，结合我的要求和附件创作，默认保留主要动效与风格，并交付 HTML 和 MP4。\n我的要求：\n');
+  expect(navigator.clipboard.writeText).toHaveBeenCalledWith('使用说明：请使用 OpenMotion 插件。如未安装，请按 `https://github.com/nexu-io/openmotion` 安装并接入后继续。\n指定模板：First（one）\n创作要求：基于模板，结合我的要求和附件创作。保留原模板的场景、界面和动画结构（可编辑模板直接原地替换文字与素材），不另写简陋文字卡页面；需要舍弃内容时先说明取舍，并交付 HTML 和 MP4。\n我的要求：\n');
   await act(async () => button('打开并编辑').click());
   expect(onOpen).toHaveBeenCalledWith('one');
   await act(async () => button('预览模板 Second', host.querySelector('main')!).click());
@@ -551,7 +557,7 @@ it.each(['repository', 'cms'] as const)('updates the displayed and copied title 
     const expected = [
       '使用说明：请使用 OpenMotion 插件。如未安装，请按 `https://github.com/nexu-io/openmotion` 安装并接入后继续。',
       `指定模板：${title}（${id}）`,
-      '创作要求：基于模板，结合我的要求和附件创作，默认保留主要动效与风格，并交付 HTML 和 MP4。',
+      '创作要求：基于模板，结合我的要求和附件创作。保留原模板的场景、界面和动画结构（可编辑模板直接原地替换文字与素材），不另写简陋文字卡页面；需要舍弃内容时先说明取舍，并交付 HTML 和 MP4。',
       '我的要求：\n',
     ].join('\n');
     expect(host.querySelector('section[aria-label="模板复刻指令"] p')?.textContent).toBe(expected);
@@ -724,7 +730,7 @@ it('does not duplicate a brand when the catalog has no author identity', async (
 
 it('copies contribution instructions with the selected template without opening another dialog', async () => {
   await mount();
-  expect(host.querySelector('a[href="https://github.com/nexu-io/openmotion/blob/main/CONTRIBUTING.md"]')?.textContent).toContain('Submit video');
+  expect(host.querySelector('a[href="https://github.com/nexu-io/openmotion/blob/main/CONTRIBUTING.md"]')?.textContent).toContain('Submit template');
   await act(async () => preview('First'));
   await act(async () => button('Recreate and submit').click());
   expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('First (one)'));

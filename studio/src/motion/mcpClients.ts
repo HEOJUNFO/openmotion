@@ -1,4 +1,4 @@
-import type { IntegrationHost } from '../../../shared/integration';
+import { supportsChatgptCloud, type IntegrationHost, type IntegrationInfo } from '../../../shared/integration';
 
 export const mcpClients = [
   { id: 'codex', name: 'Codex', brand: 'codex', host: 'codex' },
@@ -11,3 +11,15 @@ export const mcpClients = [
 ] as const satisfies readonly { id: string; name: string; brand: string; host: IntegrationHost }[];
 
 export type McpClient = typeof mcpClients[number]['id'];
+
+export function supportsLocalConnection(client: typeof mcpClients[number]) {
+  return client.host !== 'chatgpt';
+}
+
+export function supportsConnection(
+  client: typeof mcpClients[number],
+  info: IntegrationInfo | null | undefined,
+): boolean {
+  if (client.host !== 'chatgpt') return true;
+  return supportsChatgptCloud(info);
+}

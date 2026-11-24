@@ -1,3 +1,5 @@
+import { Button } from "open-design-ui/button";
+import { IconButton } from "open-design-ui/icon-button";
 import { brandCard } from "./brandKitClient";
 import { Dialog } from "@base-ui/react/dialog";
 import { BrandLogo } from "../../../packages/design-system/react/BrandLogo";
@@ -28,6 +30,7 @@ import {
   type BrandKit,
 } from "./brandKitClient";
 import * as tracking from "./pageTracking";
+import { isDeferredP2Error } from "./p2Deferred";
 import "./brand-kits.css";
 
 const sameKitList = (previous: BrandKit[] | undefined, next: BrandKit[]) => Boolean(previous && previous.length === next.length && previous.every((kit, index) => {
@@ -56,6 +59,7 @@ export function BrandKitPage({
     toast = useToast();
   const [kits, setKits] = useState<BrandKit[]>(),
     [error, setError] = useState(false),
+    [deferred, setDeferred] = useState(false),
     [revision, setRevision] = useState(0),
     [query, setQuery] = useState(""),
     [busy, setBusy] = useState(false);
@@ -82,20 +86,30 @@ export function BrandKitPage({
       request = controller;
       const deadline = setTimeout(() => controller.abort(), 10_000);
       let interval = 15_000;
+      let shouldReschedule = true;
       try {
         const kits = await loadBrandKits(controller.signal);
         if (kits.some(isBrandKitBusy)) interval = 1800;
         if (!disposed && !controller.signal.aborted) {
           setKits(previous => sameKitList(previous, kits) ? previous : kits);
+          setDeferred(false);
           setError(false);
         }
-      } catch {
-        if (!disposed) setError(true);
+      } catch (err) {
+        if (!disposed) {
+          if (isDeferredP2Error(err)) {
+            setDeferred(true);
+            setError(false);
+            shouldReschedule = false;
+          } else {
+            setError(true);
+          }
+        }
         interval = 1800;
       } finally {
         clearTimeout(deadline);
         request = undefined;
-        if (!disposed) timer = setTimeout(() => void refresh(), interval);
+        if (!disposed && shouldReschedule) timer = setTimeout(() => void refresh(), interval);
       }
     };
     const visible = () => {
@@ -140,10 +154,15 @@ export function BrandKitPage({
       setRevision((n) => n + 1);
       return result;
     } catch (error) {
-      notify(
-        error instanceof Error ? error.message : "Brand Kit operation failed",
-        true,
-      );
+      if (isDeferredP2Error(error)) {
+        setDeferred(true);
+        notify("Brand Kit website capture is coming in Phase 2.");
+      } else {
+        notify(
+          error instanceof Error ? error.message : "Brand Kit operation failed",
+          true,
+        );
+      }
       throw error;
     } finally {
       setBusy(false);
@@ -299,37 +318,38 @@ export function BrandKitPage({
         <div className="om-gallery-header">
           <div className="om-gallery-wordmark">{!inWorkspace && <BrandLogo compact />}<span className="om-gallery-page-label">{t('Brand Kit')}</span></div>
           <nav className="om-gallery-collection-tabs" aria-label={t('Brand Kit')}>
-            <button className="om-nav-item" aria-current={collection === 'official' ? 'page' : undefined} onClick={() => switchCollection('official')}>{t('Official collection')}</button>
-            <button className="om-nav-item" aria-current={collection === 'mine' ? 'page' : undefined} onClick={() => switchCollection('mine')}>{t('My brand kits')}</button>
+            <Button variant="plain" className="om-nav-item" aria-current={collection === 'official' ? 'page' : undefined} onClick={() => switchCollection('official')}>{t('Official collection')}</Button>
+            <Button variant="plain" className="om-nav-item" aria-current={collection === 'mine' ? 'page' : undefined} onClick={() => switchCollection('mine')}>{t('My brand kits')}</Button>
           </nav>
           <div className="om-control-row om-gallery-header-actions">
-            <button type="button" className="om-button" data-primary onClick={openCreate}><RemixIcon name="add-line" size={16} />{t('New Brand Kit')}</button>
+            <Button variant="ghost" type="button" className="om-button h-auto" data-primary onClick={openCreate}><RemixIcon name="add-line" size={16} />{t('New Brand Kit')}</Button>
             <GallerySearchField label={t('Search brand kits')} value={query} onChange={setQuery} />
-            <button type="button" className="om-gallery-round-button" aria-label={t('Close Brand Kit')} onClick={onClose}><RemixIcon name="close-line" size={20} /></button>
+            <IconButton variant="plain" type="button" className="om-gallery-round-button" aria-label={t('Close Brand Kit')} onClick={onClose} icon={<RemixIcon name="close-line" size={20} />} />
           </div>
         </div>
       </header>
       <main className={listSuspended ? "om-brand-list-suspended" : undefined} aria-hidden={listSuspended || undefined} aria-label={t(collection === 'official' ? 'Official collection' : 'My brand kits')}>
         {collection === "official" ? <BrandCatalogGallery scrollRoot={root} onImport={importCatalog} onCreate={openCreate} busy={busy} previewsEnabled={previewsEnabled && !detailId} query={query} onQueryChange={setQuery} /> : <>
-          <div className="om-gallery-toolbar"><div className="om-gallery-categories"><button aria-pressed>{t('All')}</button></div><div className="om-gallery-controls"><GallerySortMenu value={sort} options={[["newest", "Newest first"], ["oldest", "Oldest first"], ["name", "Name A–Z"]]} onChange={setSort} /></div></div>
+          <div className="om-gallery-toolbar"><div className="om-gallery-categories"><Button variant="plain" aria-pressed>{t('All')}</Button></div><div className="om-gallery-controls"><GallerySortMenu value={sort} options={[["newest", "Newest first"], ["oldest", "Oldest first"], ["name", "Name A–Z"]]} onChange={setSort} /></div></div>
           <div className="om-gallery-results">
-            <div className="om-gallery-masonry" aria-busy={!kits && !error} aria-label={!kits && !error ? t('Loading Brand Kits') : undefined}>
-              <GalleryIntro eyebrow={t('My brand kits')} title={t('Bring your brand into motion.')} count={t('{count} brand kits', { count: filtered.length })} disabled={busy || !filtered.some(kit => kit.state === 'ready')} onSurprise={surprise} submitLabel={t('Submit Brand Kit')} submitUrl={templateContributionUrl} createAction={{ label: t('New Brand Kit'), onClick: openCreate }} />
-              {!kits && !error && Array.from({ length: 8 }, (_, key) => <div className="om-gallery-skeleton" key={key} aria-hidden="true"><Skeleton className="om-brand-loading" /></div>)}
-              {filtered.map(kit => kit.state === 'ready' ? <TemplateGalleryCard key={kit.id + kit.updatedAt} template={cards.get(kit.id)!} resourceKind="brand-kit" coverUrl={`/motion-api/brand-kits/${kit.id}/cover?v=${brandCoverRevision}-${encodeURIComponent(kit.updatedAt)}`} active={priority === kit.id && playback.has(kit.id)} onPriority={setCardPriority} onSelect={selectPrivateCard} /> : <button key={kit.id} className="om-card om-brand-task-card om-gallery-card" data-interactive onClick={event => openPrivateCard(kit.id, event.currentTarget)}>{isBrandKitBusy(kit) ? <span className="motion-loading-mark" aria-hidden="true" /> : <RemixIcon name="error-warning-line" size={28} />}<strong className="om-subtitle">{kit.name}</strong><span className="om-muted">{t(brandStage[kit.state])}</span>{isBrandKitBusy(kit) && <ProgressBar value={kit.progress} label={t(brandStage[kit.state])} />}</button>)}
+            <div className="om-gallery-masonry" aria-busy={!kits && !error && !deferred} aria-label={!kits && !error && !deferred ? t('Loading Brand Kits') : undefined}>
+              <GalleryIntro eyebrow={t('My brand kits')} title={t('Bring your brand into motion.')} count={t('{count} brand kits', { count: filtered.length })} disabled={busy || deferred || !filtered.some(kit => kit.state === 'ready')} onSurprise={surprise} submitLabel={t('Submit Brand Kit')} submitUrl={templateContributionUrl} createAction={{ label: t('New Brand Kit'), onClick: openCreate }} />
+              {!kits && !error && !deferred && Array.from({ length: 8 }, (_, key) => <div className="om-gallery-skeleton" key={key} aria-hidden="true"><Skeleton className="om-brand-loading" /></div>)}
+              {filtered.map(kit => kit.state === 'ready' ? <TemplateGalleryCard key={kit.id + kit.updatedAt} template={cards.get(kit.id)!} resourceKind="brand-kit" coverUrl={`/motion-api/brand-kits/${kit.id}/cover?v=${brandCoverRevision}-${encodeURIComponent(kit.updatedAt)}`} active={priority === kit.id && playback.has(kit.id)} onPriority={setCardPriority} onSelect={selectPrivateCard} /> : <Button variant="plain" key={kit.id} className="om-card om-brand-task-card om-gallery-card" data-interactive onClick={event => openPrivateCard(kit.id, event.currentTarget)}>{isBrandKitBusy(kit) ? <span className="motion-loading-mark" aria-hidden="true" /> : <RemixIcon name="error-warning-line" size={28} />}<strong className="om-subtitle">{kit.name}</strong><span className="om-muted">{t(brandStage[kit.state])}</span>{isBrandKitBusy(kit) && <ProgressBar value={kit.progress} label={t(brandStage[kit.state])} />}</Button>)}
             </div>
-            {error && !kits && <div className="om-empty" role="alert"><h2 className="om-subtitle">{t('Could not load Brand Kits')}</h2><button className="om-button" onClick={() => setRevision(n => n + 1)}>{t('Retry')}</button></div>}
-            {kits && !filtered.length && <div className="om-empty">{query ? t('No matching brand kits') : <BrandKitCreate busy={busy} onCreate={create} />}</div>}
+            {deferred && <div className="om-empty" role="status" data-deferred-p2="true"><RemixIcon name="time-line" size={28} /><h2 className="om-subtitle">{t('Brand Kit capture is coming in Phase 2')}</h2><p className="om-muted">{t('Automated website style extraction and custom Brand Kit packages are scheduled for Phase 2.')}</p></div>}
+            {!deferred && error && !kits && <div className="om-empty" role="alert"><h2 className="om-subtitle">{t('Could not load Brand Kits')}</h2><Button variant="ghost" className="om-button h-auto" onClick={() => setRevision(n => n + 1)}>{t('Retry')}</Button></div>}
+            {!deferred && kits && !filtered.length && <div className="om-empty">{query ? t('No matching brand kits') : <BrandKitCreate busy={busy} deferred={deferred} onCreate={create} />}</div>}
           </div>
         </>}
       </main>
     </>}
     {selectedId === 'new' && <div className="om-media-detail-grid om-brand-detail">
       <div className="om-media-detail-stage"><div className="om-media-detail-glass" /><div className="om-media-detail-media om-brand-video"><div className="om-brand-preview-placeholder"><RemixIcon name="palette-line" size={36} /><span className="om-title">Brand Kit</span></div></div></div>
-      <aside className="om-media-detail-info"><div className="om-media-detail-nav"><button className="om-gallery-round-button" aria-label={t('All brand kits')} onClick={back}><RemixIcon name="close-line" size={20} /></button></div><div className="om-media-detail-body"><BrandKitCreate busy={busy} onCreate={create} /></div></aside>
+      <aside className="om-media-detail-info"><div className="om-media-detail-nav"><IconButton variant="plain" className="om-gallery-round-button" aria-label={t('All brand kits')} onClick={back} icon={<RemixIcon name="close-line" size={20} />} /></div><div className="om-media-detail-body"><BrandKitCreate busy={busy} deferred={deferred} onCreate={create} /></div></aside>
     </div>}
     {selected && <BrandKitDetail key={selected.id} kit={selected} busy={busy} onAction={action} onCopy={copy} onDownload={download} previewsEnabled={previewsEnabled} onClose={back} returnFocus={detailReturnFocus.current?.isConnected ? detailReturnFocus : root} position={detailPosition < 0 ? 1 : detailPosition + 1} total={detailOrder.length || 1} onNavigate={navigate} refreshFailed={error} onRefresh={refreshStatus} />}
-    {detailId && kits && !selected && <SettingsDialog title={t('Brand Kit not found')} onClose={back}><button className="om-button" onClick={back}>{t('All brand kits')}</button></SettingsDialog>}
+    {detailId && kits && !selected && <SettingsDialog title={t('Brand Kit not found')} onClose={back}><Button variant="ghost" className="om-button h-auto" onClick={back}>{t('All brand kits')}</Button></SettingsDialog>}
   </>;
   if (inWorkspace) return <div ref={root} tabIndex={-1} className="om-gallery-surface om-brand-library" data-workspace-gallery role="region" aria-label={t('Brand Kit')}>{content}</div>;
   return <Dialog.Root open onOpenChange={open => { if (!open) onClose(); }}>
@@ -341,13 +361,24 @@ export function BrandKitPage({
 
 function BrandKitCreate({
   busy,
+  deferred = false,
   onCreate,
 }: {
   busy: boolean;
+  deferred?: boolean;
   onCreate: (url: string) => Promise<void>;
 }) {
   const { t } = useI18n(),
     [url, setUrl] = useState("");
+  if (deferred) {
+    return (
+      <section className="om-brand-create" role="status" data-deferred-p2="true">
+        <RemixIcon name="time-line" size={40} />
+        <h2 className="om-media-detail-title">{t("Brand Kit capture is coming in Phase 2")}</h2>
+        <p className="om-muted">{t("Automated website style extraction and custom Brand Kit packages are scheduled for Phase 2.")}</p>
+      </section>
+    );
+  }
   return (
     <section className="om-brand-create">
       <RemixIcon name="palette-line" size={40} />
@@ -370,13 +401,13 @@ function BrandKitCreate({
             disabled={busy}
           />
         </label>
-        <button
-          className="om-button"
+        <Button variant="ghost"
+          className="om-button h-auto"
           data-primary
           disabled={busy || !url.trim()}
         >
           {t(busy ? "Starting…" : "Extract Brand Kit")}
-        </button>
+        </Button>
       </form>
     </section>
   );

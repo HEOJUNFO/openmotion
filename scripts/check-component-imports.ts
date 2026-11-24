@@ -5,13 +5,13 @@ import ts from 'typescript';
 
 const root = new URL('../', import.meta.url);
 const designSystem = 'packages/design-system/';
-const components = designSystem + 'components/';
+const components = 'packages/open-design-ui/';
 const site = components + 'site/';
 const studio = 'studio/src/';
 const alias = 'open-design-ui/';
 const dependencies = /^(?:react|react-dom|@base-ui\/react|cn)(?:\/|$)/;
 const previewDependencies = new Set(['@lezer/highlight', '@lezer/javascript']);
-const legacyEntries = new Set([studio + 'components/ui/Button', studio + 'components/ui/Slider']);
+const legacyEntries = new Set([studio + 'components/ui/Button', studio + 'components/ui/IconButton', studio + 'components/ui/Slider']);
 const nativeControls = { button: '<button>', slider: '<input type="range">' } as const;
 type NativeControl = keyof typeof nativeControls;
 type NativeControlCounts = Partial<Record<NativeControl, number>>;
@@ -45,20 +45,23 @@ export function componentImportViolation(file: string, specifier: string) {
   }
 }
 
+export function nativeControl(node: ts.JsxOpeningElement | ts.JsxSelfClosingElement, parsed: ts.SourceFile) {
+  const tag = node.tagName.getText(parsed);
+  if (tag === 'button') return 'button';
+  if (tag !== 'input') return;
+  const type = node.attributes.properties.find(attr => ts.isJsxAttribute(attr) && attr.name.getText(parsed) === 'type');
+  const value = type && ts.isJsxAttribute(type) ? type.initializer : undefined;
+  const literal = value && ts.isJsxExpression(value) ? value.expression : value;
+  if (literal && ts.isStringLiteralLike(literal) && literal.text.toLowerCase() === 'range') return 'slider';
+}
+
 function nativeControlLines(file: string, source: string) {
   const lines: Record<NativeControl, number[]> = { button: [], slider: [] };
   const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest);
   function visit(node: ts.Node) {
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
-      const tag = node.tagName.getText(parsed);
-      const line = parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line + 1;
-      if (tag === 'button') lines.button.push(line);
-      if (tag === 'input') {
-        const type = node.attributes.properties.find(attr => ts.isJsxAttribute(attr) && attr.name.getText(parsed) === 'type');
-        const value = type && ts.isJsxAttribute(type) ? type.initializer : undefined;
-        const literal = value && ts.isJsxExpression(value) ? value.expression : value;
-        if (literal && ts.isStringLiteralLike(literal) && literal.text.toLowerCase() === 'range') lines.slider.push(line);
-      }
+      const control = nativeControl(node, parsed);
+      if (control) lines[control].push(parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line + 1);
     }
     ts.forEachChild(node, visit);
   }

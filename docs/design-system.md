@@ -2,11 +2,26 @@
 
 The maintained system lives in [`packages/design-system`](../packages/design-system/README.md). `tokens.json` generates both browser `tokens.css` and Studio `studio/tokens.css`; Studio semantic aliases, fonts, controls, materials, loading states, icon rendering and brand assets belong to this package. Application modules consume its entry points and retain their layout and interaction logic. The template browser now uses shared theme roles instead of a separate fixed palette.
 
+React Button, IconButton and Slider live in the sibling package [Open Design UI](../packages/open-design-ui/README.md). Studio and the catalogue resolve their public imports directly to its source.
+
 The server exposes the positive public-asset list at `/design-system/`, with `/design-system` as the read-only catalog and `/web/design-system/` as a compatibility URL alias. Stable README logos and font-license paths are generated mirrors. No npm workspace dependency or separate publication is introduced.
 
 Brand materials are maintained in [the package Brandkit](../packages/design-system/brand/BRANDKIT.md) and [art direction](../packages/design-system/brand/MOTION_DESIGN.md); Library entries forward to those sources. They remain explicit creative context and do not automatically style authored videos. All Agents follow the [shared styling rules](../AGENTS.md#shared-design-system--required-for-every-agent).
 
 Explore is the workspace homepage. Project links open the editor directly. The home/session/browser rules below describe retained source surfaces, not additional MVP navigation. Native project iframes and export content never import application theme styles.
+
+## Measure component adoption and detached styles
+
+Run `npm run design:metrics -- --base origin/main` after installing the locked dependencies. The command compares the current working tree with that Git revision using the same scanner. Omit `--base` for a snapshot. Read `dist/ui-metrics/report.md` for totals and examples or `report.json` for every occurrence, file, line, style family and classification. Use `--out <directory>` to choose the destination. Full PR checks attach both reports and show the summary.
+
+| Metric | Unit and denominator |
+| --- | --- |
+| Component library coverage | Production Studio JSX source sites that resolve to Button, IconButton or Slider, divided by those sites plus native buttons and literal input ranges. Re-exports and renamed imports resolve to their defining component. A wrapper counts at its implementation. Loops count once. |
+| Detached style rate | Detached occurrences divided by standard plus detached occurrences. Counts color, font size, spacing, radius and shadow decisions in Studio CSS, inline JSX style objects, statically extracted Tailwind classes, and authored stylesheets under `web/` and `mcp-ui/`. |
+
+Named utilities compiled by the project's Tailwind theme, registered token references, and resets such as zero or currentColor count as standard. Explicit colors or fixed lengths count as detached even when they match a token's current value. Runtime style expressions and unresolved local variables are listed as unknown and excluded from the style denominator. Position, timing, media, SVG artwork, generated output, tests, the component library, its catalogue and the inspector are outside the scan. Generated HTML or class names assembled only at runtime have no static coverage.
+
+Native buttons with explicit specialized roles (for example a switch) stay in the coverage denominator. A simple click-only button is a migration candidate. Other native controls need interaction review. The diff matches occurrences within each file by source context, family, value and status, and preserves repeated occurrences. Line shifts alone produce no delta. Review findings are informational. The existing native-control and token checks still apply.
 
 ## Visual foundation
 
@@ -46,14 +61,14 @@ Provider settings and model choices use locally bundled brand icons from `provid
 | Floating menus | `#ffffff` | `#292b2c` |
 | Body text | `#494949` | `#e6e8e4` |
 | Secondary text | `#5c5c5c` | `#c0c4bd` |
-| Accent text | `#526909` | `#75ff77` |
-| Selected indicators | `#5a7308` | `#75ff77` |
+| Accent text | `#007106` | `#00ff08` |
+| Selected indicators | `#007106` | `#00ff08` |
 | Keyboard focus | N7 `#848484` | `#a0a69f` |
 | Primary action | N11 `#121212` | N2 `#f7f7f7` |
 | Primary action hover | N10 `#353535` | N4 `#dbdbdb` |
 | Primary action text | N0 `#ffffff` | N11 `#121212` |
 
-Primary actions use the shared neutral palette across application buttons, editor controls and dialogs. Light mode pairs an N11 surface with N0 lettering and an N10 hover surface; dark mode pairs an N2 surface with N11 lettering and an N4 hover surface. Dark-theme accents and selected indicators use B4 green (`#75ff77`), with green hover and soft surfaces for navigation, badges, selections and timeline controls. The brand role is theme-specific so progress and media controls use the same green in dark mode; light-theme colors retain their existing values. Media controls use translucent charcoal and light lettering over artwork.
+Primary actions use the shared neutral palette across application buttons, editor controls and dialogs. Light mode pairs an N11 surface with N0 lettering and an N10 hover surface; dark mode pairs an N2 surface with N11 lettering and an N4 hover surface. Both themes use OpenDesign B5 green for brand marks and progress indicators. Light mode uses B8 for accent text and selections, and dark mode uses B5. Media controls use translucent charcoal and light lettering over artwork.
 
 The application header and left control rail share the `shell` background. The central workspace uses the `workspace` surface with a 4px outer inset and 10px corners; internal panel dividers remain local separators. Chrome icons use the muted `chrome-icon` role; `chrome-hover` and `chrome-active` provide distinct inset navigation states without raised shadows. Navigation width and opacity transition over 200ms while the editor and sidebar content stay mounted. Collapsed navigation is immediately inert and hidden from assistive technology; reduced motion disables transitions. The editor route shows the left control rail. Its Projects button toggles the project list. The OpenMotion wordmark returns to Explore and the account menu opens from the right edge of the header. When collapsed on desktop, a delayed hover reveals an opaque, anchored project-navigation preview using the same workspace surface, width, full workspace height and internal layout as the pinned sidebar. Its portal stays inside the application theme scope and follows the workspace bounds as the host resizes. The preview does not resize the editor or take focus; pointer travel into it is protected, and search focus keeps it open until dismissal. Mobile retains the click-operated drawer.
 
@@ -207,7 +222,7 @@ Browser acceptance includes actual open dropdowns, copy success/failure Toasts a
 
 The package-owned `studio/editor-workspace.css` defines continuous editor surfaces, panel dividers, layout-menu icon alignment and timeline control-column, row, grid and icon-control styling. Project navigation, dock panels, toolbars, preview transport and timeline boundaries use a single 1px line in the shared subtle-border role. Resize hit areas and active drag feedback retain their existing geometry. Studio supplies measured dock widths, row heights and tick spacing; both themes use the same semantic roles, and authored clip artwork remains independent.
 
-The dark theme layers a near-black shell, charcoal workspace and lighter graphite menus. Current navigation pairs B4 green lettering with a deep green tint. Ordinary controls use a neutral hover surface. Image, video, audio and Agent icons keep their own semantic colors. Timeline track controls and the resizable control-column divider consume package-owned recipes; project artwork and preview iframe colors are unaffected.
+The dark theme layers a near-black shell, charcoal workspace and lighter graphite menus. Current navigation pairs B5 lettering with a B10 background. Ordinary controls use a neutral hover surface. Image, video, audio and Agent icons keep their own semantic colors. Timeline track controls and the resizable control-column divider consume package-owned recipes; project artwork and preview iframe colors are unaffected.
 
 ### Grouped discovery filters and alignment
 

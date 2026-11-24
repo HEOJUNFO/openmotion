@@ -1,3 +1,4 @@
+import { Button } from 'open-design-ui/button';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { MotionIcon } from './icons';
@@ -60,8 +61,8 @@ export function BlackFridaySkillCarousel({ skills, previewsEnabled, onOpenSkill 
     <div className={styles.toolbar}>
       <h2 className={styles.title}>{t('Black Friday Skills')}</h2>
       {skills.length > 1 && <div className={styles.indicators}>
-        {skills.map((skill, position) => <button key={skill.id} type="button" aria-label={t(skill.title)}
-          aria-current={index === position ? 'true' : undefined} onClick={() => setIndex(position)}><span /></button>)}
+        {skills.map((skill, position) => <Button variant="plain" key={skill.id} type="button" aria-label={t(skill.title)}
+          aria-current={index === position ? 'true' : undefined} onClick={() => setIndex(position)}><span /></Button>)}
       </div>}
     </div>
     <div className={styles.stage} ref={stage}>
@@ -69,7 +70,7 @@ export function BlackFridaySkillCarousel({ skills, previewsEnabled, onOpenSkill 
         const placement = position === index ? 'current' : position === next ? 'next' : position === previous ? 'previous' : undefined;
         if (!placement) return null;
         const selected = position === index;
-        return <button key={skill.id} type="button" className={`om-button om-gallery-cover ${styles.slide}`} data-carousel-position={placement}
+        return <Button variant="plain" key={skill.id} type="button" className={`om-button om-gallery-cover ${styles.slide}`} data-carousel-position={placement}
           aria-label={t(skill.title)} aria-describedby={selected ? descriptionId : undefined} onClick={event => {
             if (!selected) { setIndex(position); return; }
             reportSkillCardOpened(skill, position + 1, undefined, 'black_friday');
@@ -86,7 +87,7 @@ export function BlackFridaySkillCarousel({ skills, previewsEnabled, onOpenSkill 
               <span className="om-gallery-card-arrow" aria-hidden="true"><MotionIcon name="arrow-up-right" size={18} /></span>
             </span>
           </>}
-        </button>;
+        </Button>;
       })}
     </div>
   </section>;

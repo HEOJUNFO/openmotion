@@ -1,3 +1,4 @@
+import { Button } from "open-design-ui/button";
 import { FieldInput } from "../ui/FormField";
 import { useI18n } from "../../i18n/I18n";
 import { useEffect, useRef, useState } from "react";
@@ -37,7 +38,6 @@ export function FlatSliderReadout({
   }, [alwaysInput, editing]);
 
   const begin = () => {
-    if (!editable) return;
     setText(displayValue);
     setInvalid(false);
   };
@@ -103,25 +103,13 @@ export function FlatSliderReadout({
     );
   }
 
+  const valueClass = `w-11 shrink-0 text-right font-mono text-[10px] ${tier === "explicitCustom" ? "text-panel-text-0" : "text-panel-text-3"}`;
+  if (!editable) return <span data-flat-slider-value="true" className={valueClass}>{displayValue}</span>;
   return (
-    <span
-      data-flat-slider-value="true"
-      role={editable ? "button" : undefined}
-      tabIndex={editable ? 0 : undefined}
-      title={editable ? t("Click to type a value") : undefined}
-      onClick={begin}
-      onKeyDown={(e) => {
-        if (!editable) return;
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          begin();
-        }
-      }}
-      className={`w-11 shrink-0 text-right font-mono text-[10px] ${
-        tier === "explicitCustom" ? "text-panel-text-0" : "text-panel-text-3"
-      } ${editable ? "cursor-text rounded-[3px] hover:bg-panel-hover hover:text-panel-text-0" : ""}`}
-    >
+    <Button type="button" variant="plain" data-flat-slider-value="true"
+      className={`${valueClass} cursor-text rounded-[3px] hover:bg-panel-hover hover:text-panel-text-0`}
+      title={t("Click to type a value")} onClick={begin}>
       {displayValue}
-    </span>
+    </Button>
   );
 }

@@ -1,3 +1,4 @@
+import { implicitTextLane } from "../store/timelineElement";
 import { isImplicitRootText } from "./timelineText";
 /**
  * Higher-level timeline DOM operations: element factories, DOM-to-element
@@ -31,6 +32,7 @@ import {
   buildTimelineElementIdentity,
   getTimelineElementIdentity,
   isTimelineIgnoredElement,
+  isVideoAudible,
   readTimelineElementZIndex,
 } from "./timelineElementHelpers";
 
@@ -104,6 +106,10 @@ export function createTimelineElementFromManifestClip(params: {
     selectorIndex =
       doc && selector ? getTimelineElementSelectorIndex(doc, hostEl, selector) : undefined;
     sourceFile = getTimelineElementSourceFile(hostEl);
+  } else if (!doc && clip.authored) {
+    ({ domId, hfId, sourceFile } = clip.authored);
+    if (domId) selector = `#${CSS.escape(domId)}`;
+    else if (hfId) selector = `[data-hf-id="${CSS.escape(hfId)}"]`;
   }
 
   const identity = buildTimelineElementIdentity({
@@ -181,9 +187,16 @@ export function createTimelineElementFromManifestClip(params: {
     entry.zIndex = readTimelineElementZIndex(hostEl);
     if (isImplicitRootText(hostEl)) {
       entry.implicitTextTiming = true;
-      entry.track = -100000 + fallbackIndex;
+      entry.track = implicitTextLane(fallbackIndex);
       entry.authoredTrack = 0;
     }
+  }
+  if (!doc && clip.authored) {
+    entry.hidden = clip.authored.hidden || undefined;
+    entry.timelineLocked = clip.authored.timelineLocked || undefined;
+    entry.muted = clip.authored.muted || undefined;
+    entry.hasAudio = isVideoAudible({ tag: entry.tag, hasAudioAttr: clip.authored.hasAudioAttr, muted: clip.authored.muted }) || undefined;
+    if (Number.isFinite(clip.authored.volume)) entry.volume = clip.authored.volume;
   }
   if (clip.assetUrl) entry.src = clip.assetUrl;
   if (clip.kind === "composition" && clip.compositionId) {
@@ -338,7 +351,7 @@ function scanTimelineFromDOM(
 
     if (isImplicitRootText(el)) {
       entry.implicitTextTiming = true;
-      entry.track = -100000 + els.length;
+      entry.track = implicitTextLane(els.length);
       entry.authoredTrack = 0;
     }
 
@@ -420,6 +433,17 @@ function scanTimelineFromDOM(
 // Merge helpers
 // ---------------------------------------------------------------------------
 
+export function restoreAuthoredTrack(element: TimelineElement): TimelineElement {
+  if (
+    element.implicitTextTiming ||
+    element.authoredTrack == null ||
+    element.authoredTrack === element.track
+  ) {
+    return element;
+  }
+  return { ...element, track: element.authoredTrack };
+}
+
 export function mergeTimelineElementsPreservingDowngrades(
   currentElements: TimelineElement[],
   nextElements: TimelineElement[],
@@ -439,17 +463,22 @@ export function mergeTimelineElementsPreservingDowngrades(
   }
 
   const nextIdentities = new Set(nextElements.map(getTimelineElementIdentity));
-  const preserved = currentElements.filter(
-    (element) =>
-      !nextIdentities.has(getTimelineElementIdentity(element)) &&
-      // Only preserve enriched sub-composition children (compositionSrc set),
-      // which a bare DOM re-scan legitimately drops and enrichMissingCompositions
-      // re-adds. A TOP-LEVEL element missing from the fresh scan was genuinely
-      // removed (undo of a split, a delete), so let it go — otherwise undoing a
-      // split leaves a ghost clip in the timeline even though the file is reverted.
-      element.compositionSrc != null &&
-      stillInPreview(element),
-  );
+  const preserved = currentElements
+    .filter(
+      (element) =>
+        !nextIdentities.has(getTimelineElementIdentity(element)) &&
+        // Only preserve enriched sub-composition children (compositionSrc set),
+        // which a bare DOM re-scan legitimately drops and enrichMissingCompositions
+        // re-adds. A TOP-LEVEL element missing from the fresh scan was genuinely
+        // removed (undo of a split, a delete), so let it go — otherwise undoing a
+        // split leaves a ghost clip in the timeline even though the file is reverted.
+        element.compositionSrc != null &&
+        stillInPreview(element),
+    )
+    // Restore authored track space before merging with fresh authored nextElements:
+    // currentElements carry normalized display lanes, and mixing display lanes with
+    // authored tracks makes normalizeToZones drift preserved clips onto new rows.
+    .map(restoreAuthoredTrack);
   if (preserved.length === 0) return nextElements;
   return [...nextElements, ...preserved];
 }

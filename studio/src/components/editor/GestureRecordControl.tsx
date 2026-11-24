@@ -1,3 +1,5 @@
+import { Button } from "open-design-ui/button";
+import { IconButton } from "open-design-ui/icon-button";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
 import { useTrackDesignInput } from "../../contexts/DesignPanelInputContext";
@@ -33,7 +35,7 @@ export function GestureRecordPanelButton({
 
   return (
     <div className="px-4 pb-3">
-      <button
+      <Button variant="plain"
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => {
@@ -50,7 +52,7 @@ export function GestureRecordPanelButton({
         {recording
           ? t("Stop recording {value0}s -- press {recordKey}", { value0: (recordingDuration ?? 0).toFixed(1), recordKey: recordKey })
           : t("Record gesture ({recordKey}) -- move pointer to capture motion", { recordKey: recordKey })}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -74,7 +76,7 @@ export function GestureRecordBadge({
     : t("Record gesture ({recordKey})", { recordKey: recordKey });
 
   return (
-    <button
+    <IconButton variant="plain"
       type="button"
       aria-label={label}
       title={label}
@@ -100,8 +102,7 @@ export function GestureRecordBadge({
         event.stopPropagation();
         onToggleRecording();
       }}
-    >
-      <GestureRecordIcon recording={recording} />
-    </button>
+      icon={<GestureRecordIcon recording={recording} />}
+    />
   );
 }

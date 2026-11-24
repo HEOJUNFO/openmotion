@@ -1,3 +1,4 @@
+import { Button } from 'open-design-ui/button';
 import type { PreparedTemplateProject } from './templateHandoff';
 import type { GalleryTemplate } from '../../../shared/catalog';
 import { MotionIcon } from './icons';
@@ -35,8 +36,8 @@ export function TemplateOpenRecovery({ progress, onRetry, onCheck, onOpen }: {
     <strong>{t(progress.state === 'creating' ? 'Creating a separate project…' : progress.state === 'opening' ? 'Opening this project…' : progress.state === 'failed' ? 'Project not created' : progress.state === 'unknown' ? 'Creation result needs checking' : progress.state === 'open_failed' ? 'Project created, preview not opened' : 'This project is ready')}</strong>
     {progress.result && <p>{progress.result.title}<small>{t('Your original project is retained')}</small></p>}
     {progress.error && <p>{progress.error}</p>}
-    {progress.state === 'failed' && <button className="om-button" onClick={onRetry}>{t('Retry creation')}</button>}
-    {progress.state === 'unknown' && <><p>{t('Check the original request before creating another project.')}</p><button className="om-button" onClick={onCheck}>{t('Check creation result')}</button></>}
-    {(progress.state === 'ready' || progress.state === 'open_failed') && <button className="om-button" data-primary onClick={onOpen}>{t(progress.state === 'open_failed' ? 'Retry opening this project' : 'Open this project')}<MotionIcon name="arrow-up-right" size={16} /></button>}
+    {progress.state === 'failed' && <Button variant="ghost" className="om-button h-auto" onClick={onRetry}>{t('Retry creation')}</Button>}
+    {progress.state === 'unknown' && <><p>{t('Check the original request before creating another project.')}</p><Button variant="ghost" className="om-button h-auto" onClick={onCheck}>{t('Check creation result')}</Button></>}
+    {(progress.state === 'ready' || progress.state === 'open_failed') && <Button variant="ghost" className="om-button h-auto" data-primary onClick={onOpen}>{t(progress.state === 'open_failed' ? 'Retry opening this project' : 'Open this project')}<MotionIcon name="arrow-up-right" size={16} /></Button>}
   </section>;
 }

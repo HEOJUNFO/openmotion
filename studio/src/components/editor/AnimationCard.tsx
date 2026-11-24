@@ -1,3 +1,4 @@
+import { Button } from "open-design-ui/button";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -200,7 +201,7 @@ export const AnimationCard = memo(function AnimationCard({
           : "border-b border-neutral-800 pb-3"
       }
     >
-      <button
+      <Button variant="plain"
         type="button"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
@@ -229,7 +230,7 @@ export const AnimationCard = memo(function AnimationCard({
           {easeLabel}
         </span>
         <RemixIcon name="arrow-down-s-fill" size={10} className={`shrink-0 transition-transform ${flat ? "text-panel-text-5" : "text-neutral-500"} ${expanded ? "" : "-rotate-90"}`} />
-      </button>
+      </Button>
 
       {expanded && (
         <div className="pt-2">
@@ -258,7 +259,7 @@ export const AnimationCard = memo(function AnimationCard({
                   </p>
                 )}
               </div>
-              <button
+              <Button variant="plain"
                 type="button"
                 onClick={() => {
                   void navigator.clipboard.writeText(summary);
@@ -269,7 +270,7 @@ export const AnimationCard = memo(function AnimationCard({
                 title={t("Copy description for agent prompts")}
               >
                 {copied ? t("Copied") : t("Copy")}
-              </button>
+              </Button>
             </div>
             <div className={RESPONSIVE_GRID}>
               {animation.method !== "set" && (
@@ -453,13 +454,13 @@ export const AnimationCard = memo(function AnimationCard({
                 onClose={() => setAddingProp(false)}
                 buttonClassName="text-[11px] font-medium text-neutral-400 transition-colors hover:text-neutral-200"
               />
-              <button
+              <Button variant="plain"
                 type="button"
                 onClick={() => onDeleteAnimation(animation.id)}
                 className="ml-auto text-[11px] font-medium rounded-sm text-danger-ink transition-colors hover:bg-danger/15"
                 title={t("Remove this animation")}
               >
-                {t("Remove")}</button>
+                {t("Remove")}</Button>
             </div>
           </div>
         </div>

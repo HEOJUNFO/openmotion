@@ -1,3 +1,4 @@
+import { IconButton } from "open-design-ui/icon-button";
 import { OverflowText } from "../ui/OverflowText";
 import { ColorField } from "./propertyPanelColor";
 import { FieldInput, NativeSelect } from "../ui/FormField";
@@ -9,6 +10,7 @@ import type { BlockParam } from "@hyperframes/core/registry";
 import { useFileManagerContextOptional } from "../../contexts/FileManagerContext";
 import { useStudioPlaybackContext } from "../../contexts/StudioContext";
 import { trackBlockParamCommit } from "../../telemetry/events";
+import { createTypingSave } from "../../utils/typingSave";
 import { serializeStudioFileMutation } from "../../utils/studioFileMutationCoordinator";
 
 interface BlockParamsPanelProps {
@@ -44,9 +46,7 @@ export const BlockParamsPanel = memo(function BlockParamsPanel({
     Object.fromEntries(params.map((p) => [p.key, p.default])),
   );
   const [commitState, setCommitState] = useState<CommitState>({ tone: "idle" });
-  // Per-param debounce timers: a single shared timer would let a second
-  // param's edit silently cancel the first param's pending commit.
-  const commitTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const queues = useRef(new Map<string, ReturnType<typeof createTypingSave>>());
 
   const commitParamNow = useCallback(
     async (key: string, nextValue: string) => {
@@ -113,48 +113,29 @@ export const BlockParamsPanel = memo(function BlockParamsPanel({
     [commitParamNow, compositionPath, fileManager],
   );
 
-  const handleChange = useCallback(
-    (key: string, value: string) => {
-      setValues((prev) => ({ ...prev, [key]: value }));
-      const timers = commitTimersRef.current;
-      const existing = timers.get(key);
-      if (existing) clearTimeout(existing);
-      timers.set(
-        key,
-        setTimeout(() => {
-          timers.delete(key);
-          void commitParam(key, value);
-        }, 300),
-      );
-    },
-    [commitParam],
-  );
-
-  // Flush (not discard) pending commits on unmount so closing the panel
-  // within the debounce window doesn't silently drop the last edit.
-  const flushRef = useRef<() => void>(() => {});
-  flushRef.current = () => {
-    for (const [key, timer] of commitTimersRef.current) {
-      clearTimeout(timer);
-      const value = values[key];
-      if (value !== undefined) void commitParam(key, value);
-    }
-    commitTimersRef.current.clear();
+  const handleChange = (key: string, value: string, composing = false) => {
+    setValues(prev => ({ ...prev, [key]: value }));
+    if (composing) return;
+    let queue = queues.current.get(key);
+    if (!queue) queues.current.set(key, queue = createTypingSave(300));
+    queue.schedule(() => commitParam(key, value));
   };
-  useEffect(() => () => flushRef.current(), []);
+
+  useEffect(() => () => {
+    for (const queue of queues.current.values()) void queue.flush();
+  }, []);
 
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-3 py-2 border-b border-neutral-800">
         <div className="text-[11px] font-semibold text-neutral-200 truncate">{blockTitle}</div>
-        <button
+        <IconButton variant="plain"
           type="button"
           onClick={onClose}
           aria-label={t("Close block parameters")}
           className="p-1.5 -m-1 text-neutral-500 hover:text-neutral-300 active:scale-[0.97] transition-colors"
-        >
-          <RemixIcon name="close-line" size={14} />
-        </button>
+          icon={<RemixIcon name="close-line" size={14} />}
+        />
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
@@ -173,7 +154,8 @@ export const BlockParamsPanel = memo(function BlockParamsPanel({
             param={param}
             value={values[param.key] ?? param.default}
             disabled={!fileManager}
-            onChange={(v) => handleChange(param.key, v)}
+            onChange={(v, composing) => handleChange(param.key, v, composing)}
+            onFlush={() => { void queues.current.get(param.key)?.flush(); }}
           />
         ))}
         {commitState.tone === "saving" && (
@@ -200,12 +182,15 @@ function ParamControl({
   value,
   disabled,
   onChange,
+  onFlush,
 }: {
   param: BlockParam;
   value: string;
   disabled?: boolean;
-  onChange: (value: string) => void;
+  onChange: (value: string, composing?: boolean) => void;
+  onFlush: () => void;
 }) {
+  const composing = useRef(false);
   const { t } = useI18n();
   if (param.type === "color") {
     return (
@@ -245,7 +230,11 @@ function ParamControl({
           value={value}
           disabled={disabled}
           aria-label={t(param.label)}
-          onChange={(e) => onChange(e.target.value)}
+          onCompositionStart={() => { composing.current = true; }}
+          onCompositionEnd={(e) => { composing.current = false; onChange(e.currentTarget.value); }}
+          onChange={(e) => onChange(e.currentTarget.value, composing.current)}
+          onBlur={() => { if (!composing.current) onFlush(); }}
+          onKeyDown={(e) => { if (e.key === "Enter" && !composing.current && !e.nativeEvent.isComposing) onFlush(); }}
           className="w-full bg-neutral-900 border border-neutral-800 rounded-sm px-2 py-1 text-[10px] text-neutral-200 focus:outline-hidden focus:border-neutral-700 disabled:cursor-not-allowed disabled:opacity-50"
         />
       )}

@@ -1,3 +1,4 @@
+import { Button } from 'open-design-ui/button';
 import { useEffect, useState } from 'react';
 import { isEditableTemplate, type GalleryTemplate } from '../../../shared/catalog';
 import { useI18n } from '../i18n/I18n';
@@ -39,13 +40,13 @@ export function TemplateDetailReview({ template, onCopyColor, onFilter }: {
     <section className={styles.reviewModule} aria-label={t('Video information')}>
       <h3>{t('Video information')}</h3>
       <dl className={`${styles.metadata} ${styles.reviewMetadata}`}>
-        {purposes.length > 0 && <div><dt>{t('Video purpose')}</dt><dd>{purposes.map(value => <button className="om-badge" key={value} onClick={() => onFilter('uses', value)}>{t(value)}</button>)}</dd></div>}
-        {(['styles', 'creationModels'] as const).map(key => facetValues(template, key).length > 0 && <div key={key}><dt>{t(key === 'styles' ? 'Motion style' : 'Creation models')}</dt><dd>{facetValues(template, key).map(value => <button className="om-badge" key={value} onClick={() => onFilter(key, value)}>{t(value)}</button>)}</dd></div>)}
+        {purposes.length > 0 && <div><dt>{t('Video purpose')}</dt><dd>{purposes.map(value => <Button variant="plain" className="om-badge" key={value} onClick={() => onFilter('uses', value)}>{t(value)}</Button>)}</dd></div>}
+        {(['styles', 'creationModels'] as const).map(key => facetValues(template, key).length > 0 && <div key={key}><dt>{t(key === 'styles' ? 'Motion style' : 'Creation models')}</dt><dd>{facetValues(template, key).map(value => <Button variant="plain" className="om-badge" key={value} onClick={() => onFilter(key, value)}>{t(value)}</Button>)}</dd></div>)}
       </dl>
       {(guide?.palette.length || facetValues(template, 'colors').length > 0) ? <div className={styles.reviewColors}>
         <span>{t('Reference colors')}</span>
-        {guide?.palette.length ? <div className={styles.palette}>{guide.palette.map(color => <Tooltip key={color} withinDialog wrap label={t('Copy color {color}', { color })}><button className={styles.colorSwatch} style={{ backgroundColor: color }} aria-label={t('Copy color {color}', { color })} onClick={() => onCopyColor(color)} /></Tooltip>)}</div>
-          : <div>{facetValues(template, 'colors').map(value => <button className="om-badge" key={value} onClick={() => onFilter('colors', value)}>{t(value)}</button>)}</div>}
+        {guide?.palette.length ? <div className={styles.palette}>{guide.palette.map(color => <Tooltip key={color} withinDialog wrap label={t('Copy color {color}', { color })}><Button variant="plain" className={styles.colorSwatch} style={{ backgroundColor: color }} aria-label={t('Copy color {color}', { color })} onClick={() => onCopyColor(color)} /></Tooltip>)}</div>
+          : <div>{facetValues(template, 'colors').map(value => <Button variant="plain" className="om-badge" key={value} onClick={() => onFilter('colors', value)}>{t(value)}</Button>)}</div>}
       </div> : null}
     </section>
   </div>;
@@ -67,9 +68,9 @@ export function TemplateProductionNotes({ template, onGuide }: { template: Galle
 function TemplateGuideLaunch({ onGuide }: { onGuide: () => void }) {
   const { t } = useI18n();
   return <div className={styles.reviewGuideEntry} aria-label={t('Production references')}>
-    <button className={`om-button ${styles.guideEntry}`} data-quiet aria-label={t('View motion.md guide')} onClick={onGuide}>
+    <Button variant="plain" className={`om-button ${styles.guideEntry}`} data-quiet aria-label={t('View motion.md guide')} onClick={onGuide}>
       <MotionIcon name="code" size={16} /><span><strong>{t('View motion.md guide')}</strong><small>{t('Shots, motion and examples')}</small></span><MotionIcon name="arrow-right" size={16} />
-    </button>
+    </Button>
   </div>;
 }
 
@@ -78,7 +79,7 @@ export function TemplateGuideReview({ template, open, onClose, onFullPage }: { t
   if (!open) return null;
   return <section className={styles.guideDialog} aria-label={t('Interactive walkthrough')}
     onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); onClose(); } }}>
-    <header><button className="om-button" data-quiet onClick={onClose}><MotionIcon name="arrow-left" size={16} />{t('Back to template')}</button><div><strong>{t('Motion.md guide')}</strong><span>{template.title}</span></div>
+    <header><Button variant="ghost" className="om-button h-auto" data-quiet onClick={onClose}><MotionIcon name="arrow-left" size={16} />{t('Back to template')}</Button><div><strong>{t('Motion.md guide')}</strong><span>{template.title}</span></div>
       <a className="om-button" href={template.motionGuideUrl} target="_blank" rel="noreferrer" onClick={onFullPage}>{t('View full page')}<MotionIcon name="arrow-up-right" size={14} /></a>
     </header>
     <p>{t('Try the controls in the walkthrough. Changes affect this demo only, not the reference video or your project.')}

@@ -6,7 +6,7 @@ import { memo, useCallback, useEffect, useId, useRef, useState } from "react";
 import { RenderQueueInfo } from "./RenderQueueInfo";
 import { RenderPreview } from "./RenderPreview";
 import { Button } from "open-design-ui/button";
-import { IconButton } from "../ui/IconButton";
+import { IconButton } from "open-design-ui/icon-button";
 import { Tooltip } from "../ui/Tooltip";
 import { ErrorNotice } from "../ui/ErrorNotice";
 import type { RenderJob } from "./useRenderQueue";
@@ -71,12 +71,16 @@ export const RenderQueueItem = memo(function RenderQueueItem({
   // Managed attempts retain task-bound URLs after refresh or restart. A name
   // alone could resolve to another export after its original record is deleted.
   const legacyFileSrc = buildProjectApiPath(projectId, `/renders/file/${encodeURIComponent(job.filename)}`);
-  const fileSrc = job.nativeJobId
-    ? studioProjectUrl(`/api/render/${encodeURIComponent(job.nativeJobId)}/view`, projectId)
-    : legacyFileSrc;
-  const downloadSrc = job.nativeJobId
-    ? studioProjectUrl(`/api/render/${encodeURIComponent(job.nativeJobId)}/download`, projectId)
-    : legacyFileSrc + "?download=1";
+  const fileSrc = job.localBlobUrl
+    ? job.localBlobUrl
+    : job.nativeJobId
+      ? studioProjectUrl(`/api/render/${encodeURIComponent(job.nativeJobId)}/view`, projectId)
+      : legacyFileSrc;
+  const downloadSrc = job.localBlobUrl
+    ? job.localBlobUrl
+    : job.nativeJobId
+      ? studioProjectUrl(`/api/render/${encodeURIComponent(job.nativeJobId)}/download`, projectId)
+      : legacyFileSrc + "?download=1";
 
   useEffect(() => {
     setFileAccess(job.fileAvailable === false ? 'unavailable' : 'unchecked');
@@ -88,6 +92,10 @@ export const RenderQueueItem = memo(function RenderQueueItem({
   }, [fileSrc, job.fileAvailable]);
 
   const checkFile = useCallback(async (): Promise<CheckedFileAccess> => {
+    if (job.localBlobUrl) {
+      setFileAccess('available');
+      return 'available';
+    }
     if (fileRequest.current) return 'unknown';
     const controller = new AbortController();
     fileRequest.current = controller;
@@ -109,7 +117,7 @@ export const RenderQueueItem = memo(function RenderQueueItem({
         setCheckingFile(false);
       }
     }
-  }, [fileSrc]);
+  }, [fileSrc, job.localBlobUrl]);
 
   const handleOpen = async () => {
     if (fileRequest.current) return;
@@ -153,7 +161,7 @@ export const RenderQueueItem = memo(function RenderQueueItem({
     try {
       const a = document.createElement("a");
       a.href = downloadSrc;
-      a.download = "";
+      a.download = job.localBlobUrl ? job.filename : "";
       a.click();
       // The browser does not report whether the user saved the file.
       finish({ outcome: 'unknown', file_status: 'available', delivery_status: 'browser_save_requested' });
@@ -197,7 +205,7 @@ export const RenderQueueItem = memo(function RenderQueueItem({
       <div className="flex flex-wrap items-center gap-2.5">
         {/* Thumbnail — static frame; swaps to live video on hover.
             A real button so keyboard users can open the render too. */}
-        <button
+        <Button variant="plain"
           type="button"
           onClick={canAccessFile ? () => void handleOpen() : undefined}
           disabled={!canAccessFile}
@@ -237,7 +245,7 @@ export const RenderQueueItem = memo(function RenderQueueItem({
               <div className="w-2 h-2 rounded-full bg-text-5" />
             </div>
           )}
-        </button>
+        </Button>
 
         <RenderQueueInfo job={job} />
 

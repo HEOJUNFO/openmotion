@@ -1,3 +1,4 @@
+import { Button } from 'open-design-ui/button';
 import { useState } from 'react';
 import type { ReviewComment } from '../../../shared/review-comments';
 import { IconButton, Tooltip } from '../components/ui';
@@ -17,10 +18,10 @@ export function ReviewCommentCard({ comment, stale, busy, locatingDisabled, sele
   return <article className="flex flex-col gap-2 rounded-lg border border-border p-3">
     <div className="flex items-center gap-2">
       {selecting && <Checkbox aria-label={t('Select comment') + ' ' + comment.text} checked={checked} onCheckedChange={onCheck} />}
-      <button className="om-text-link min-w-0 flex-1 text-left disabled:opacity-40" disabled={busy || locatingDisabled} onClick={onLocate}>
+      <Button variant="plain" className="om-text-link min-w-0 flex-1 text-left disabled:opacity-40" disabled={busy || locatingDisabled} onClick={onLocate}>
         <span className="font-mono text-step-11 tabular-nums">{comment.anchor.time === undefined ? t('Whole video') : reviewTime(comment.anchor.time)}</span>
         {comment.anchor.annotation && <span className="ml-2 inline-flex items-center gap-1 text-step-11"><RemixIcon name="edit-line" size={12} />{t('Annotated')}</span>}
-      </button>
+      </Button>
       <Tooltip label={t(comment.status === 'open' ? 'Mark complete' : 'Reopen')}><IconButton size="sm" aria-label={t(comment.status === 'open' ? 'Mark complete' : 'Reopen')} disabled={busy} onClick={onComplete} icon={<RemixIcon name={comment.status === 'open' ? 'check-line' : 'arrow-go-back-line'} size={14} />} /></Tooltip>
       <Menu modal={false} align="end" aria-label={t('Comment options')} trigger={<IconButton size="sm" aria-label={t('Comment options')} disabled={busy} icon={<RemixIcon name="more-line" size={14} />} />}>
         <MenuItem onClick={() => setDetails(value => !value)}>{t('Saved context')}</MenuItem>

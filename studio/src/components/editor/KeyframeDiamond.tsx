@@ -1,3 +1,4 @@
+import { IconButton } from "open-design-ui/icon-button";
 import { memo } from "react";
 import { RemixIcon } from "../../icons/RemixIcons";
 
@@ -6,7 +7,7 @@ export type DiamondState = "active" | "inactive" | "ghost";
 interface KeyframeDiamondProps {
   state: DiamondState;
   onClick: () => void;
-  title?: string;
+  title: string;
   size?: number;
   isHold?: boolean;
 }
@@ -27,7 +28,7 @@ export const KeyframeDiamond = memo(function KeyframeDiamond({
   }[state];
 
   return (
-    <button
+    <IconButton variant="plain"
       type="button"
       onClick={(e) => {
         e.stopPropagation();
@@ -37,8 +38,7 @@ export const KeyframeDiamond = memo(function KeyframeDiamond({
       title={title}
       aria-label={title}
       aria-pressed={state === "active"}
-    >
-      <RemixIcon name={`${shape}-${state === "active" ? "fill" : "line"}`} size={size} />
-    </button>
+      icon={<RemixIcon name={`${shape}-${state === "active" ? "fill" : "line"}`} size={size} />}
+    />
   );
 });

@@ -1,6 +1,6 @@
 import type { SkillCategory } from './skillCategories';
 import type { TemplateCollection } from './workspacePageRouting';
-import { createContext, useContext } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
 import type { useWorkspace } from './useWorkspace';
 import type { GalleryTemplate } from '../../../shared/catalog';
 import type { McpEntry } from './pageTracking';
@@ -13,14 +13,18 @@ export type WorkspaceChrome = {
   /** Opens the MCP connection page; `entry` records which control opened it. */
   openConnections: (entry: McpEntry) => void;
   openModelSettings: () => void;
+  openProviderSettings?: (provider: string) => void;
+  openAccountSettings?: () => void;
+  openSubscriptionSettings?: () => void;
   openHome: () => void;
   openAssets: () => void;
   assetsOpen: boolean;
-  openSkills: (category?: SkillCategory | null) => void;
+  openSkills: (category?: SkillCategory | null, trigger?: HTMLElement) => void;
   skillsOpen: boolean;
   toggleSidebar: () => void;
   sidebarOpen: boolean;
   navigationCollapsed: boolean;
+  projectNavigation?: ReactNode;
   settingsOpen?: boolean;
   registerEditor: (guard: EditorGuard | null) => void;
   beforeViewChange: () => Promise<void>;

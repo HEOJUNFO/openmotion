@@ -1,3 +1,4 @@
+import { Button } from 'open-design-ui/button';
 import { PreviewCard } from '@base-ui/react/preview-card';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { GalleryTemplate } from '../../../shared/catalog';
@@ -44,7 +45,7 @@ function PreviewMedia({ template }: { template: GalleryTemplate }) {
     {template.previewUrl && !reducedMotion && !failed && <video ref={video} muted playsInline loop preload="none" aria-hidden="true"
       style={{ opacity: playing ? 1 : 0 }} onPlaying={() => setPlaying(true)} onError={() => { setFailed(true); setPlaying(false); }} />}
     {template.previewUrl && !reducedMotion && !playing && !failed && <div className={styles.relatedPreviewStatus} role="status"><Skeleton className={styles.mediaProgress} /><span>{t('Loading preview…')}</span></div>}
-    {failed && <div className={styles.relatedPreviewStatus} role="status"><span>{t('Preview unavailable. Try again.')}</span><button className="om-button" onClick={() => { setFailed(false); retry(value => value + 1); }}>{t('Retry')}</button></div>}
+    {failed && <div className={styles.relatedPreviewStatus} role="status"><span>{t('Preview unavailable. Try again.')}</span><Button variant="ghost" className="om-button h-auto" onClick={() => { setFailed(false); retry(value => value + 1); }}>{t('Retry')}</Button></div>}
     <span className={styles.relatedPreviewCaption}>{template.title}</span>
   </>;
 }
@@ -100,7 +101,7 @@ function LegacyRelatedTemplatePreviews({ templates, panel, onSelect, wide = fals
       <h3>{t('Related templates')}</h3>
       {wide && <p>{t('Keep exploring. Select a video to view it here.')}</p>}
       <div>{templates.map((item, index) => <PreviewCard.Trigger key={item.id} payload={item} delay={150} closeDelay={100}
-        render={<button type="button" onClick={() => { setOpen(false); onSelect(item, index + 1); }}
+        render={<Button variant="plain" type="button" onClick={() => { setOpen(false); onSelect(item, index + 1); }}
           aria-label={t('Preview template {title}', { title: item.title })} />}>
         <TemplatePoster template={item} /><span className={styles.relatedCaption}>{item.title}{wide && <small>{item.authorName || item.author || item.brand}{item.duration != null ? ` · ${t('{value}s', { value: Number(item.duration.toFixed(1)) })}` : ''}</small>}</span>
       </PreviewCard.Trigger>)}</div>

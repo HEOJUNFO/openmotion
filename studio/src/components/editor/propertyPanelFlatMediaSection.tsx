@@ -1,3 +1,4 @@
+import { Button } from "open-design-ui/button";
 import { useI18n } from "../../i18n/I18n";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { useEffect, useState } from "react";
@@ -199,7 +200,7 @@ export function FlatMediaSection({
             {srcAttr}
           </span>
         </span>
-        {!mvp && <button
+        {!mvp && <Button variant="plain"
           type="button"
           data-flat-media-copy="true"
           onClick={() => {
@@ -213,7 +214,7 @@ export function FlatMediaSection({
         >
           {copied ? <Check size={11} /> : <ClipboardList size={11} />}
           {copied ? t("Copied") : t("Copy")}
-        </button>}
+        </Button>}
       </div>}
       {!mvp && isVisualMedia && (
         <div className="ml-px border-l-2 border-panel-border-input py-1 pl-[10px]">
@@ -224,7 +225,7 @@ export function FlatMediaSection({
                 {t("transparent")}{" "}{isVideo ? "WebM" : "PNG"}
               </span>
             </span>
-            <button
+            <Button variant="plain"
               type="button"
               data-flat-media-remove-bg="true"
               disabled={!canRemoveBackground || removeBusy}
@@ -237,7 +238,7 @@ export function FlatMediaSection({
               }
             >
               {removeBusy ? t("Working") : t("Remove BG")}
-            </button>
+            </Button>
           </div>
           <FlatSelectRow
             label={t("Quality")}

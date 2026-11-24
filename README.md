@@ -446,7 +446,7 @@ Connect fal.ai in **Model Settings** and refresh its catalog to find GPT Image 2
 
 > “Use the Brand Kit section of our Motion.md and our approved script. Generate artwork for the opening, a video insert, background music and TTS narration. Add the selected results to the recreated project, align the sound and visuals, then show me the full cut.”
 
-[Model catalog](gateway/catalog.ts) · [Provider setup and endpoints](docs/model-gateway.md)
+[Model catalog](src/services/model-gateway.ts) · [Provider setup and endpoints](docs/model-gateway.md)
 
 <a id="technical-guide"></a>
 <a id="setup-and-technical-documentation"></a>
@@ -555,7 +555,7 @@ This copies instructions; it does not install the runtime or register MCP. Keep 
 }
 ```
 
-The **eighteen public MCP names (including one asset compatibility alias)** cover template discovery and details, Skill discovery and reading, project creation and reading, editing, preview, media import and BYOK generation, reusable asset versions, project management and ZIP sharing, export, version restoration and cancellation. Shared workflow and engine guides are available through MCP resources. [Tool contract](docs/mcp-phase1-tools.md)
+The **twenty-two public MCP names (including one asset compatibility alias and four Design Studio HTML tools)** cover template discovery and details, Skill discovery and reading, project creation and reading, editing, preview, media import and BYOK generation, reusable asset versions, project management and ZIP sharing, export, version restoration, cancellation, and Design Studio HTML projects, annotations and Open Design round-trip. Shared workflow and engine guides are available through MCP resources. [Tool contract](docs/mcp-phase1-tools.md)
 
 Find a template with `openmotion_list_templates`, inspect it with `openmotion_get_template`, then create an editable copy with `openmotion_create_project`. [Template catalog](docs/template-catalog.md)
 
@@ -680,14 +680,14 @@ BYOA connects your existing Agent client; the Assets workspace supports direct m
 | Layer | Technology | Start reading |
 | --- | --- | --- |
 | **Studio and editor UI** | React 19, TypeScript 5.9, Vite 6, Tailwind CSS 4, Zustand, CodeMirror and Dockview | [Studio source](studio/src/) · [Motion app](studio/src/motion/MotionApp.tsx) · [Editor development](docs/editor-fork.md) |
-| **Application runtime** | Node.js 26.11.1 in CI, native HTTP, TypeScript execution and local files/JSON | [server.ts](server.ts) · [workspace.ts](workspace.ts) · [Session architecture](docs/session-architecture.md) |
-| **Agent integration** | Local stdio MCP, five core Skills and generated host adapters | [mcp.ts](mcp.ts) · [phase1.ts](phase1.ts) · [Adapter generation](scripts/export-adapters.ts) |
-| **Multimodal generation** | Codex media adapter, Atlas Cloud predictions, fal.ai queue integration and persisted generation jobs | [Gateway service](gateway/service.ts) · [Provider adapters](gateway/providers.ts) · [Model catalog](gateway/catalog.ts) |
-| **Composition and motion** | HTML/CSS/JS, GSAP, a pinned composition engine and native timeline/history | [Engine integration](hyperframes.ts) · [Template source](template-library/) · [Version adapter](phase1-versions.ts) |
+| **Application runtime** | Node.js 26.11.1 in CI, native HTTP, TypeScript execution and local files/JSON | [server.ts](server.ts) · [workspace service](src/services/workspace-service.ts) · [Session architecture](docs/session-architecture.md) |
+| **Agent integration** | Local stdio MCP, five core Skills and generated host adapters | [MCP HTTP](src/mcp/http-transport.ts) · [Tool dispatcher](src/mcp/tool-dispatcher.ts) · [Adapter generation](scripts/export-adapters.ts) |
+| **Multimodal generation** | Codex media adapter, Atlas Cloud predictions, fal.ai queue integration and persisted generation jobs | [Gateway service](src/services/model-gateway.ts) · [Provider adapters](src/services/opendesign-adapter.ts) · [Model catalog](src/services/model-gateway.ts) |
+| **Composition and motion** | HTML/CSS/JS, GSAP, a pinned composition engine and native timeline/history | [Engine integration](hyperframes.ts) · [Template source](template-library/) · [Version history](src/services/version-history-service.ts) |
 | **Rendering and media** | Chromium, Puppeteer Core, FFmpeg and FFprobe | [Render service](server.ts) · [Export verifier](scripts/verify-export.ts) · [Native runtime lock](scripts/runtime-lock.json) |
 | **Creative knowledge** | Markdown, source packages, presets and comparison evidence | [Motion.md](docs/motion-md.md) · [Core Skills](skills/) · [Community Library](library/README.md) |
 | **Release history** | Stable version descriptions and published release records | [Changelog](https://github.com/nexu-io/openmotion/blob/main/CHANGELOG.md) · [GitHub Releases](https://github.com/nexu-io/openmotion/releases) |
-| **Validation and packaging** | Node test runner, Vitest, Studio checks, npm lockfiles and explicit distribution lists | [Tests](tests/) · [Studio tests](studio/tests/) · [CI](.github/workflows/ci.yml) · [Distribution](scripts/distribution.ts) |
+| **Validation and packaging** | Node test runner, Vitest, Studio checks, npm lockfiles and explicit distribution lists | [Tests](tests/) · [Studio tests](studio/tests/) · [CI](.github/workflows/ci.yml) · [Container build](deploy/Dockerfile) |
 | **Publishing and learning — Coming** | Platform adapters, scheduling, version-linked feedback and retrieval; implementation still to be designed | [Studio vision](docs/product/studio-vision.md) |
 
 Dependency pins live in [package.json](package.json), [package-lock.json](package-lock.json) and the [runtime lock](scripts/runtime-lock.json). Models and third-party libraries retain their own terms; the application is Apache-2.0.
@@ -697,7 +697,7 @@ Dependency pins live in [package.json](package.json), [package-lock.json](packag
 | If you work on… | A useful contribution | Entry point |
 | --- | --- | --- |
 | **Frontend and interaction** | Improve timeline editing, media generation controls, accessibility or preview behavior | [Studio](studio/src/) · [Media generator](studio/src/motion/MediaGenerator.tsx) |
-| **AI and model infrastructure** | Add a provider adapter or model preset using the shared job and media flow | [Gateway design](docs/product/media-generation-design.md) · [Provider adapters](gateway/providers.ts) |
+| **AI and model infrastructure** | Add a provider adapter or model preset using the shared job and media flow | [Gateway design](docs/product/media-generation-design.md) · [Provider adapters](src/services/opendesign-adapter.ts) |
 | **Agents and developer tools** | Improve a host adapter, Skill, resource guide or project-tool workflow | [Agent adapters](docs/agent-adapters.md) · [MCP contract](docs/mcp-phase1-tools.md) |
 | **Motion and creative coding** | Share a component, native template or Motion.md package with an actual remix | [Components](library/components/README.md) · [Entry checklist](library/ENTRY_TEMPLATE.md) |
 | **Video and rendering** | Improve export reliability, media handling or reproducible validation | [Engine notes](docs/hyperframes.md) · [Export verifier](scripts/verify-export.ts) |
@@ -772,7 +772,7 @@ OpenMotion is licensed under [Apache-2.0](LICENSE). Third-party code, templates,
 
 | Source | Connection |
 | --- | --- |
-| [OpenDesign](https://github.com/nexu-io/open-design) | Develops OpenMotion and provides its UI foundations, resource structure and brand direction. [Design system](docs/design-system.md) and [Motion showcase](https://open-design.ai/motion/) |
+| [OpenDesign](https://github.com/nexu-io/open-design) | Develops OpenMotion and provides its UI foundations, resource structure, brand direction and Apache-2.0 HTML design templates, design systems, Skills, craft guides and scenario task profiles; [design system](docs/design-system.md), [design library notices](library/design/NOTICE.md) and [Motion showcase](https://open-design.ai/motion/) |
 | [Hyperframes](https://github.com/heygen-com/hyperframes) | HTML-to-video composition, Studio and rendering foundations, pinned to 0.9.7; creator references, external adaptation demonstrations and component source; [engine notes](docs/hyperframes.md), [template notices](template-library/NOTICE.md) and [catalog provenance](docs/template-catalog.md) |
 | [MotionGit](https://motiongit.com/) / adunext | Kinetic Tech source packaged as Presenter Tech; [license and attribution](library/templates/presenter-tech/NOTICE.md) |
 | [Hypit](https://github.com/hypit-ai/hypit) | Inspiration for agent-led viral-video cloning and editable variants; no runtime imported here |

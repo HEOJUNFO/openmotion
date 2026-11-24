@@ -1,8 +1,8 @@
+import { Button } from 'open-design-ui/button';
 import { blackFridayTemplates } from '../../../shared/black-friday-collection';
 import { groupBrandSeries, rankDiscoverySeries } from './brandStoryData';
-import { collectionFacet, formatCategories, isFormatCategory, type TemplateCollection } from './templateCollections';
-import { facetValues } from './templateDiscovery';
-import { aiTechnologyIndustry, discoveryIndustries, discoveryPurposes, orderedPurposes, purposeOrder } from './templateDiscoveryTaxonomy';
+import { collectionFacet, formatCategories, isFormatCategory, templateCollectionFacets, templatesInCollection, type TemplateCollection } from './templateCollections';
+import { aiTechnologyIndustry, purposeOrder } from './templateDiscoveryTaxonomy';
 import { useCoveredTemplates } from './useCoveredTemplates';
 import { useEffect, useMemo, useState } from 'react';
 import type { GalleryTemplate, TemplatePage } from '../../../shared/catalog';
@@ -13,32 +13,43 @@ import { motionApi } from './useWorkspace';
 import { useWorkspaceChrome } from './WorkspaceChromeContext';
 
 // Each Explore collection owns its loaded pages. New pages append to the existing collection.
-export function useExploreTemplates(category: string | undefined, locale: string, search = '', limit = 8) {
-  const [pages, setPages] = useState<TemplatePage[]>([]);
+interface ExploreTemplateQuery {
+  search?: string;
+  limit?: number;
+  covered?: boolean;
+  firstPages?: Map<string, TemplatePage>;
+}
+
+export function useExploreTemplates(category: string | undefined, locale: string, { search = '', limit = 8, covered = true, firstPages }: ExploreTemplateQuery = {}) {
+  const cacheKey = JSON.stringify([category, locale, search, limit, covered]);
+  const cached = firstPages?.get(cacheKey);
+  const [pages, setPages] = useState<TemplatePage[]>(() => cached ? [cached] : []);
   const [offset, setOffset] = useState(0);
   const [attempt, setAttempt] = useState(0);
   const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(Boolean(category));
-  const queryKey = JSON.stringify([category, locale, search, limit]);
-  const [loadedQuery, setLoadedQuery] = useState(queryKey);
-  if (loadedQuery !== queryKey) {
-    setLoadedQuery(queryKey);
-    setPages([]);
+  const [loading, setLoading] = useState(Boolean(category) && !cached);
+  const [loadedQuery, setLoadedQuery] = useState(cacheKey);
+  if (loadedQuery !== cacheKey) {
+    setLoadedQuery(cacheKey);
+    setPages(cached ? [cached] : []);
     setOffset(0);
     setError(false);
-    setLoading(Boolean(category));
+    setLoading(Boolean(category) && !cached);
   }
   useEffect(() => {
     if (!category) return;
     const controller = new AbortController();
-    const query = new URLSearchParams({ category, locale, covered: 'true', limit: String(limit), offset: String(offset) });
+    const query = new URLSearchParams({ category, locale, limit: String(limit), offset: String(offset) });
+    if (covered) query.set('covered', 'true');
     if (search) query.set('query', search);
     motionApi<TemplatePage>('/template-catalog?' + query, {
       signal: AbortSignal.any([controller.signal, AbortSignal.timeout(12000)]),
     }).then(page => {
       if (!Array.isArray(page.items)) throw new Error('Invalid template page');
       if (controller.signal.aborted) return;
-      setPages(previous => {
+      if (offset === 0) firstPages?.set(cacheKey, page);
+      setPages(existing => {
+        const previous = offset === 0 ? [] : existing;
         const seen = new Set(previous.flatMap(group => group.items.map(item => item.id)));
         const items = page.items.filter(item => {
           if (seen.has(item.id)) return false;
@@ -50,7 +61,7 @@ export function useExploreTemplates(category: string | undefined, locale: string
     }).catch(() => { if (!controller.signal.aborted) setError(true); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [category, locale, offset, attempt, search, limit]);
+  }, [category, locale, offset, attempt, search, limit, covered, firstPages, cacheKey]);
   const next = pages.at(-1)?.next;
   function loadMore() {
     if (loading || next == null || next <= offset) return;
@@ -76,34 +87,20 @@ function exploreCategories(purposes: string[]): (readonly [ExploreTemplateFilter
   ];
 }
 
-function industryPreview(matches: GalleryTemplate[], limit: number) {
-  const brands = new Set<string>();
-  const firstWorks = matches.filter(item => {
-    const brand = item.brand?.trim();
-    if (!brand) return true;
-    if (brands.has(brand)) return false;
-    brands.add(brand);
-    return true;
-  });
-  return [...new Set([...firstWorks, ...matches])].slice(0, limit);
-}
-
 export function useExploreTemplateShelf(filter: ExploreTemplateFilter, locale: string, enabled: boolean, active: boolean, all: ReturnType<typeof useExploreTemplates>, limit: number) {
   const collection = filter === 'all' ? null : filter;
   const curated = useCoveredTemplates(locale, enabled && active);
-  const filtered = useExploreTemplates(enabled && isFormatCategory(filter) ? filter : undefined, locale, '', limit);
+  const filtered = useExploreTemplates(enabled && isFormatCategory(filter) ? filter : undefined, locale, { limit });
   const page = filter === 'all' ? all : filtered;
-  const categories = useMemo(() => exploreCategories(curated.catalog ? orderedPurposes(curated.catalog.flatMap(discoveryPurposes)) : purposeOrder), [curated.catalog]);
-  const industries = useMemo(() => [...new Set(curated.catalog?.flatMap(discoveryIndustries))], [curated.catalog]);
+  const { categories, industries } = useMemo(() => {
+    const { purposes, industries } = curated.catalog ? templateCollectionFacets(curated.catalog) : { purposes: purposeOrder, industries: [] };
+    return { categories: exploreCategories(purposes), industries };
+  }, [curated.catalog]);
   const items = useMemo(() => {
     const catalog = curated.catalog ?? [];
     if (collection === 'top-100-brands') return rankDiscoverySeries(groupBrandSeries(catalog)).slice(0, limit).map(brand => brand.items[0]);
     if (collection === 'black-friday') return blackFridayTemplates(catalog, locale).flatMap(stage => stage.items).slice(0, limit);
-    const facet = collectionFacet(collection);
-    if (facet) {
-      const matches = catalog.filter(item => facetValues(item, facet.key).includes(facet.value));
-      return facet.key === 'industries' ? industryPreview(matches, limit) : matches.slice(0, limit);
-    }
+    if (collectionFacet(collection)) return templatesInCollection(catalog, collection).slice(0, limit);
     return page.pages[0]?.items.slice(0, limit) ?? [];
   }, [collection, curated.catalog, locale, limit, page.pages]);
   const shelf = { items, collection, categories, industries };
@@ -113,24 +110,32 @@ export function useExploreTemplateShelf(filter: ExploreTemplateFilter, locale: s
   return { ...shelf, loading: requiresCatalog && !curated.catalog && !curated.failed, error: requiresCatalog && curated.failed, retry: curated.retry };
 }
 
-export function TemplatePromptAction({ item, onTry }: { item: GalleryTemplate; onTry: (prompt: string) => void }) {
+export function ExploreActionLabel({ label }: { label: 'Use this prompt' | 'Use Skill' }) {
   const { t } = useI18n();
+  return <>{t(label)}<RemixIcon name="arrow-right-line" size={15} /></>;
+}
+
+export function TemplatePromptAction({ item, onTry }: { item: GalleryTemplate; onTry: (prompt: string) => void }) {
   const prompt = [item.description?.trim(), item.styleDescription?.trim()].filter(Boolean).join('\n\n');
   if (!prompt) return null;
-  return <button className="om-nav-item" onClick={() => onTry(prompt)}>
-    <RemixIcon name="movie-line" size={15} />{t('Try as a video prompt')}<RemixIcon name="arrow-right-line" size={15} />
-  </button>;
+  return <Button variant="plain" className="om-nav-item om-feed-prompt-action" onClick={() => onTry(prompt)}>
+    <ExploreActionLabel label="Use this prompt" />
+  </Button>;
 }
 
 export function ExploreTemplateCard({ item, active, onPriority, onTry, onOpen }: {
   item: GalleryTemplate; active: boolean; onPriority: (id: string | null) => void; onTry: (prompt: string) => void; onOpen?: () => void;
 }) {
+  const { t } = useI18n();
   const { openLibrary } = useWorkspaceChrome();
-  return <TemplateGalleryCard template={item} playbackId={'community/' + item.id} active={active} onPriority={onPriority}
+  return <TemplateGalleryCard brandedFallback showCoverDuration={false} template={item} playbackId={'community/' + item.id} active={active} onPriority={onPriority}
     onSelect={(template, trigger) => { onOpen?.(); openLibrary(trigger, template); }}
     footer={<div className="om-feed-template-copy">
       <strong>{item.title}</strong>
-      {item.description && <p>{item.description}</p>}
+      <p className="om-feed-card-description">
+        {item.duration != null && <small className="om-feed-duration">{t('{value}s', { value: Number(item.duration.toFixed(1)) })}{item.description ? ' · ' : ''}</small>}
+        {item.description}
+      </p>
       <TemplatePromptAction item={item} onTry={onTry} />
     </div>} />;
 }

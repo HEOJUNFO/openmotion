@@ -43,7 +43,7 @@ export async function checkDesign() {
       .filter(file => file.endsWith('.css')).map(file => directory + file)
   ))).flat();
   const sharedNames = new Set([...names, ...Object.keys(tokens.studio).map(name => '--' + name)]);
-  for (const file of [...consumerFiles, 'packages/design-system/base.css', 'packages/design-system/material.css', 'packages/design-system/controls.css', 'packages/design-system/catalog.css', 'packages/design-system/loading.css', 'packages/design-system/studio/application.css', 'packages/design-system/studio/adapter.css', 'packages/design-system/studio/control-states.css', 'packages/design-system/studio/feedback.css', 'packages/design-system/studio/mcp.css', 'packages/design-system/studio/template-cards.css']) {
+  for (const file of [...consumerFiles, 'packages/design-system/base.css', 'packages/design-system/material.css', 'packages/design-system/controls.css', 'packages/design-system/catalog.css', 'packages/design-system/loading.css', 'packages/design-system/studio/application.css', 'packages/design-system/studio/adapter.css', 'packages/design-system/studio/control-recipes.css', 'packages/design-system/studio/control-states.css', 'packages/design-system/studio/feedback.css', 'packages/design-system/studio/mcp.css', 'packages/design-system/studio/template-cards.css']) {
     const css = await readFile(new URL(file, root), 'utf8');
     assert.doesNotMatch(css, /#[\da-f]{3,8}\b|\brgba?\(|\bhsla?\(/i, `${file}: UI colors belong in tokens.json.`);
     for (const match of css.matchAll(/var\((--motion-[\w-]+)/g)) assert.ok(names.has(match[1]), `${file}: undefined ${match[1]}`);
@@ -56,15 +56,24 @@ export async function checkDesign() {
   for (const [name, value] of Object.entries(tokens.studio) as [string, string][]) {
     for (const match of value.matchAll(/var\((--motion-[\w-]+)/g)) assert.ok(names.has(match[1]), `Studio token ${name}: undefined ${match[1]}`);
   }
+  for (const [ink, surface] of [
+    ['on-signature-band', 'signature-band'], ['on-signature-band', 'signature-band-hover'],
+    ['signature-band-muted', 'signature-band'], ['signature-band-muted', 'signature-band-hover'],
+  ]) {
+    const a = luminance(tokens.shared[ink]), b = luminance(tokens.shared[surface]);
+    assert.ok((Math.max(a, b) + .05) / (Math.min(a, b) + .05) >= 4.5, `shared: ${ink} on ${surface} needs 4.5:1 contrast.`);
+  }
   for (const [theme, values] of Object.entries(tokens.themes) as [string, Record<string, string>][]) {
     const textPairs = [
       ['text', 'shell'], ['text', 'workspace'], ['text', 'panel'], ['text', 'inset'],
       ['muted', 'panel'], ['muted', 'workspace'], ['dim', 'panel'], ['dim', 'bg'], ['dim', 'raised'],
+      ['attribution-link', 'panel'], ['attribution-link', 'workspace'],
       ['accent', 'accent-soft'], ['on-action', 'action'], ['on-action', 'action-hover'], ['text', 'accent-soft'],
       ['danger', 'danger-soft'], ['on-danger', 'danger'], ['warning', 'warning-soft'], ['strong', 'highlight'],
       ['creative-image', 'raised'], ['creative-video', 'raised'], ['creative-audio', 'raised'], ['creative-agent', 'raised'],
     ];
     if (theme === 'dark') textPairs.push(['accent', 'chrome-active'], ['video-ink', 'accent'], ['placeholder', 'panel']);
+    if (theme === 'light') textPairs.push(['accent', 'hover']);
     for (const [ink, surface] of textPairs) {
       const a = luminance(values[ink]), b = luminance(values[surface]);
       assert.ok((Math.max(a, b) + .05) / (Math.min(a, b) + .05) >= 4.5, `${theme}: ${ink} on ${surface} needs 4.5:1 contrast.`);

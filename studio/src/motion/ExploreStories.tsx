@@ -11,12 +11,15 @@ import type { useMediaCatalog } from './useMediaCatalog';
 import { floatingCity, seedanceStory, gptImageStory, storyModels, type ModelStory } from './exploreModelStories';
 import { animeOpeningScenario, mcpCapabilities } from './mcpCapabilities';
 import { supportsScene, type StudioDestination } from './creativeStudios';
-import sale from './skill-covers/sale-countdown.webp';
-import shorts from './skill-covers/multi-clips-to-reels.webp';
-import paintedFilm from './skill-covers/footage-to-handpainted.webp';
-import printCover from './skill-covers/color-pop-poster.webp';
-import blueprint from './skill-covers/chalk-blueprint.webp';
-import launch from './skill-covers/premium-halo.webp';
+import { archivedSkillPoster } from './skillCatalog';
+import { useCloudFeatureEnabled } from '../utils/cloudFeatures';
+
+const sale = archivedSkillPoster('sale-countdown');
+const shorts = archivedSkillPoster('multi-clips-to-reels');
+const paintedFilm = archivedSkillPoster('footage-to-handpainted');
+const printCover = archivedSkillPoster('color-pop-poster');
+const blueprint = archivedSkillPoster('chalk-blueprint');
+const launch = archivedSkillPoster('premium-halo');
 
 type StoryActions = {
   onNavigate: (target: StudioDestination, prompt: string) => void;
@@ -28,6 +31,7 @@ type StoryActions = {
 
 export function ExploreHighlights({ onChooseStudio, onOpenBlackFriday }: Pick<StoryActions, 'onChooseStudio' | 'onOpenBlackFriday'>) {
   const { t } = useI18n();
+  const designStudioEnabled = useCloudFeatureEnabled('designStudio');
   const jump = (id: string) => {
     const heading = document.getElementById('explore-' + id);
     heading?.focus({ preventScroll: true });
@@ -39,7 +43,7 @@ export function ExploreHighlights({ onChooseStudio, onOpenBlackFriday }: Pick<St
       <StoryCard title={seedanceStory.title} poster={paintedFilm} label={t('Cinema Studio') + ' · ' + t('Video')} description={seedanceStory.description} onClick={() => jump('seedance')} />
       <StoryCard title="Black Friday collection" poster={sale} label={t('Template library')} description="Browse Black Friday video references and Skills for your sale." onClick={event => onOpenBlackFriday(event.currentTarget)} />
       <StoryCard title="Claude Fable 5.2" poster={blueprint} label="Claude Code · OpenMotion MCP" description="From a keyframe to an anime opening" onClick={() => jump('claude')} />
-      <StoryCard title={gptImageStory.title} poster={printCover} label={t('Design Studio') + ' · ' + t('Image')} description={gptImageStory.description} onClick={() => jump('gpt-image')} />
+      <StoryCard title={gptImageStory.title} poster={printCover} label={designStudioEnabled ? t('Design Studio') + ' · ' + t('Image') : t('Image')} description={gptImageStory.description} onClick={() => jump('gpt-image')} />
       <StoryCard title="Shorts Studio" poster={shorts} label={t('Short-form video')} description="Cut a recording into vertical shorts or assemble several clips into one reel." onClick={() => onChooseStudio(findTechniqueStudio('shorts')!)} />
     </HorizontalRail>
   </section>;
@@ -56,13 +60,13 @@ export function ModelCollection({ story, gateway, onNavigate, onModel }: {
   const heading = 'explore-' + story.id;
   return <section aria-labelledby={heading}>
     <header className="om-discovery-heading"><div>
-      <div className="om-story-model-title"><ProviderAvatar name={story.title} provider={{ id: story.brand, custom: false }} /><h2 id={heading} tabIndex={-1}>{story.title}</h2></div>
+      <h2 id={heading} tabIndex={-1}>{story.title}</h2>
       <p className="om-muted">{t(story.description)}</p>
     </div>
       {loading ? <Skeleton className="om-story-action-skeleton" /> : gateway.failed ? <Button type="button" variant="secondary" className="om-button" onClick={gateway.retry}>{t('Retry loading models')}</Button> :
         <Button type="button" variant="secondary" className="om-button" onClick={featured ? () => onModel(featured.id) : openModelSettings}>{t(featured ? 'Model details' : 'Manage providers')}<RemixIcon name="arrow-right-line" size={16} /></Button>}
     </header>
-    <ModelStoryGallery story={story} models={models} loading={loading} onNavigate={onNavigate} />
+    <ModelStoryGallery story={story} models={models} loading={loading} onNavigate={onNavigate} brandedFallback showLabels={false} />
   </section>;
 }
 

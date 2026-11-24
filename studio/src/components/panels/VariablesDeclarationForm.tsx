@@ -1,3 +1,4 @@
+import { Button } from "open-design-ui/button";
 import { ColorField } from "../editor/propertyPanelColor";
 import { FieldInput, FieldTextarea, NativeSelect } from "../ui/FormField";
 import { useI18n } from "../../i18n/I18n";
@@ -333,19 +334,19 @@ export function DeclarationForm({
       </Field>
       {error && <p className="text-[10px] text-danger-ink">{error}</p>}
       <div className="flex items-center justify-end gap-2 pt-1">
-        <button
+        <Button variant="plain"
           type="button"
           onClick={onCancel}
           className="h-6 rounded-sm px-2 text-[10px] text-neutral-500 hover:text-neutral-300"
         >
-          {t("Cancel")}</button>
-        <button
+          {t("Cancel")}</Button>
+        <Button variant="plain"
           type="button"
           onClick={submit}
           className="h-6 rounded-sm bg-neutral-800 px-2 text-[10px] font-medium text-neutral-200 hover:bg-neutral-700"
         >
           {submitLabel}
-        </button>
+        </Button>
       </div>
     </div>
   );

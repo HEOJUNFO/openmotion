@@ -1,3 +1,4 @@
+import { IconButton } from "open-design-ui/icon-button";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
 import { useCallback, useState } from "react";
@@ -86,15 +87,14 @@ export function BorderRadiusEditor({
           <circle cx={sBL} cy={PREVIEW_H - sBL} r={3} className={dotFill} />
         </svg>
 
-        <button
+        <IconButton variant="plain" aria-label={linked ? t("Unlink corners") : t("Link all corners")}
           type="button"
           className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-300"
           onClick={handleToggleLinked}
           disabled={disabled}
           title={linked ? t("Unlink corners") : t("Link all corners")}
-        >
-          <RemixIcon name={linked ? "link" : "link-unlink"} size={14} />
-        </button>
+          icon={<RemixIcon name={linked ? "link" : "link-unlink"} size={14} />}
+        />
       </div>
 
       {linked ? (

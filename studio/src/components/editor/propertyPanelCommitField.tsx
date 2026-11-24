@@ -1,3 +1,4 @@
+import { IconButton } from "open-design-ui/icon-button";
 import { FieldInput } from "../ui/FormField";
 import { Tooltip } from "../ui/Tooltip";
 import { RemixIcon } from "../../icons/RemixIcons";
@@ -124,6 +125,7 @@ export function CommitField({
     return true;
   };
   const previewNumericKeyStep = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
     const direction = arrowDirection(event.key);
     if (direction === null) return;
     const nextDraft = adjustNumericToken(draftRef.current, direction, event);
@@ -230,7 +232,7 @@ export function CommitField({
       {input}
       <span className="flex shrink-0 flex-col">
         {([1, -1] as const).map((direction) => (
-          <button
+          <IconButton variant="plain"
             key={direction}
             type="button"
             data-inspector-step={direction}
@@ -245,9 +247,8 @@ export function CommitField({
               commitDraft(next);
             }}
             className="rounded-sm text-panel-text-3 hover:bg-panel-border-input/50 hover:text-panel-text-0 disabled:opacity-40"
-          >
-            <RemixIcon name="arrow-down-s-line" className={direction === 1 ? "rotate-180" : undefined} size={12} />
-          </button>
+            icon={<RemixIcon name="arrow-down-s-line" className={direction === 1 ? "rotate-180" : undefined} size={12} />}
+          />
         ))}
       </span>
     </span>

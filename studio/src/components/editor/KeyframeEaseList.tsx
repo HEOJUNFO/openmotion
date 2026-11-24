@@ -1,3 +1,4 @@
+import { Button } from "open-design-ui/button";
 import { NativeSelect } from "../ui/FormField";
 import { useI18n } from "../../i18n/I18n";
 import type { GsapPercentageKeyframe } from "@hyperframes/core/gsap-parser";
@@ -105,7 +106,7 @@ export function KeyframeEaseList({
             data-ease-segment-pct={kf.percentage}
             className="rounded-md bg-neutral-900/50"
           >
-            <button
+            <Button variant="plain"
               type="button"
               onClick={() => onToggle(isExpanded ? null : kf.percentage)}
               aria-expanded={isExpanded}
@@ -122,7 +123,7 @@ export function KeyframeEaseList({
               >
                 <path d="M2 3l3 4 3-4z" />
               </svg>
-            </button>
+            </Button>
             {isExpanded && (
               <div className="px-2 pb-2">
                 <EaseCurveSection

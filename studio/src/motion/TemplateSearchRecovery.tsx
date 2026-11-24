@@ -1,3 +1,5 @@
+import { IconButton } from 'open-design-ui/icon-button';
+import { Button } from 'open-design-ui/button';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { MotionIcon } from './icons';
@@ -136,13 +138,13 @@ export function TemplateSearchRecovery(props: RequestCallbacks & (SearchRecovery
     <div className={styles.recoveryHeading}>
       <div><h3 id={formTitleId} className="om-media-detail-title">{t(mode === 'reference' ? 'Add your reference' : 'Describe your video')}</h3>
         <p className={styles.description}>{t('Copy the request, then paste it into the chat where you use OpenMotion and send it to start.')}</p></div>
-      {props.home ? <button type="button" className={`${styles.iconButton} ${styles.recoveryDismiss}`} onClick={back} aria-label={t('Close')}><MotionIcon name="close" size={20} /></button>
-        : <button type="button" className="om-button" onClick={back} disabled={copying}>{t('Back')}</button>}
+      {props.home ? <IconButton variant="plain" type="button" className={`${styles.iconButton} ${styles.recoveryDismiss}`} onClick={back} aria-label={t('Close')} icon={<MotionIcon name="close" size={20} />} />
+        : <Button variant="ghost" type="button" className="om-button h-auto" onClick={back} disabled={copying}>{t('Back')}</Button>}
     </div>
     {mode === 'reference' && <>
       <div className={styles.recoveryActions} role="group" aria-label={t('Reference video')}>
-        <button className="om-button om-filter-pill" type="button" aria-pressed={source === 'link'} disabled={copying} onClick={() => selectSource('link')}>{t('Video link')}</button>
-        <button className="om-button om-filter-pill" type="button" aria-pressed={source === 'local'} disabled={copying} onClick={() => selectSource('local')}>{t('Local video')}</button>
+        <Button variant="plain" className="om-button om-filter-pill" type="button" aria-pressed={source === 'link'} disabled={copying} onClick={() => selectSource('link')}>{t('Video link')}</Button>
+        <Button variant="plain" className="om-button om-filter-pill" type="button" aria-pressed={source === 'local'} disabled={copying} onClick={() => selectSource('local')}>{t('Local video')}</Button>
       </div>
       {source === 'link' ? <label className="om-label">{t('Reference video')}<span className={`om-field ${styles.recoveryField}`}><input autoComplete="off" type="url" required maxLength={2000} value={reference} disabled={copying} onChange={event => { setReference(event.target.value); setManual(null); }} placeholder="https://…" /></span></label>
         : <div className={styles.referenceFile}>
@@ -151,7 +153,7 @@ export function TemplateSearchRecovery(props: RequestCallbacks & (SearchRecovery
             event.currentTarget.value = '';
             if (file) void importVideo(file);
           }} />
-          <button type="button" className="om-button" disabled={copying || importing}
+          <Button variant="ghost" type="button" className="om-button h-auto" disabled={copying || importing}
             aria-label={pickerLabel} aria-describedby={localVideo ? fileNameId : undefined} onClick={() => {
               tracking.reportRecoveryAction('choose_local_video', onActivity(), entry, 'local');
               filePicker.current?.click();
@@ -161,7 +163,7 @@ export function TemplateSearchRecovery(props: RequestCallbacks & (SearchRecovery
               <span id={fileNameId} className={styles.referenceFilename} role="status" title={localVideo.name}>{localVideo.name}</span>
               <span className={styles.referenceFileAction}>{pickerLabel}</span>
             </> : pickerLabel}
-          </button>
+          </Button>
         </div>}
     </>}
     <label key={mode} className="om-label">{t(mode === 'describe' ? 'What video do you want to make?' : 'What would you like to keep or change? (optional)')}
@@ -176,18 +178,18 @@ export function TemplateSearchRecovery(props: RequestCallbacks & (SearchRecovery
     {manual?.query === query && <label className="om-label">{t('Creation instruction')}<span className={`om-field ${styles.recoveryField}`}><textarea readOnly value={manual.brief} rows={5} onFocus={event => event.target.select()} /></span></label>}
     <div className={styles.recoveryFooter}>
       <div className={styles.recoveryPrimary}>
-        <button type="submit" className="om-button" data-primary disabled={copying || !valid}>{t('Copy request')}<MotionIcon name="copy" size={16} /></button>
+        <Button variant="ghost" type="submit" className="om-button h-auto" data-primary disabled={copying || !valid}>{t('Copy request')}<MotionIcon name="copy" size={16} /></Button>
       </div>
       <div className={styles.resourceLinks}>
-        <button type="button" className={`om-text-link ${styles.repositoryLink}`} data-quiet disabled={copying} onClick={() => choose(mode === 'reference' ? 'describe' : 'reference')}>
-          {t(mode === 'reference' ? 'Describe your video' : 'Add your reference')}</button>
-        <a className={`om-text-link ${styles.repositoryLink}`} data-quiet href="?page=mcp" target="_blank" rel="noopener noreferrer">{t('Connect an Agent')}<MotionIcon name="arrow-up-right" size={14} /></a>
+        <Button variant="plain" type="button" className={`om-text-link ${styles.repositoryLink}`} data-quiet disabled={copying} onClick={() => choose(mode === 'reference' ? 'describe' : 'reference')}>
+          {t(mode === 'reference' ? 'Describe your video' : 'Add your reference')}</Button>
+        <a className={`om-text-link ${styles.repositoryLink}`} data-quiet href="/mcp-setup" target="_blank" rel="noopener noreferrer">{t('Connect an Agent')}<MotionIcon name="arrow-up-right" size={14} /></a>
       </div>
     </div>
   </form>;
   if (props.home) return form;
   if (!props.visible) return null;
-  if (!props.expanded) return <div className={styles.recoveryTeaser}><button className="om-button" onClick={props.onExpand}>{t('Nothing suitable?')}</button></div>;
+  if (!props.expanded) return <div className={styles.recoveryTeaser}><Button variant="ghost" className="om-button h-auto" onClick={props.onExpand}>{t('Nothing suitable?')}</Button></div>;
   const title = t(reason === 'no_results' ? 'No templates match the current conditions.' : reason === 'catalog_empty' ? 'No templates available yet.' : 'Nothing suitable?');
   return <section ref={section} className={styles.searchRecovery} data-form={mode ? 'open' : undefined} aria-label={t('Find another starting point')}>
     <div className={styles.recoveryStatus}>
@@ -206,9 +208,9 @@ export function TemplateSearchRecovery(props: RequestCallbacks & (SearchRecovery
           <p className="om-muted">{t('Use a video link or local video to create an editable project.')}</p>
         </div>
         <div className={styles.recoveryPrimary}>
-          <button ref={start} className="om-button" data-primary onClick={() => choose('reference')}>
+          <Button variant="ghost" ref={start} className="om-button h-auto" data-primary onClick={() => choose('reference')}>
             {t('Make a video from a reference')}<MotionIcon name="arrow-right" size={16} />
-          </button>
+          </Button>
         </div>
       </div>}
     </div>

@@ -1,3 +1,5 @@
+import { Button } from "open-design-ui/button";
+import { IconButton } from "open-design-ui/icon-button";
 import { NativeSelect } from "../ui/FormField";
 import { useI18n } from "../../i18n/I18n";
 import { useMemo, useRef, useState } from "react";
@@ -354,7 +356,7 @@ export function ColorGradingControls({
       />
 
       <div className="min-w-0 rounded-md border border-panel-border/70 bg-panel-input/15">
-        <button
+        <Button variant="plain"
           type="button"
           className="flex h-8 w-full min-w-0 items-center gap-1.5 px-2 text-left text-[11px] font-medium text-panel-text-3 transition-colors hover:bg-panel-hover/60 hover:text-panel-text-1"
           onClick={() => setLutOpen((value) => !value)}
@@ -367,7 +369,7 @@ export function ColorGradingControls({
           )}
           <span className="min-w-0 flex-1 truncate">{t("Custom LUT")}</span>
           {grading.lut && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-studio-accent" />}
-        </button>
+        </Button>
         {lutOpen && (
           <div className="grid gap-1.5 border-t border-panel-border/60 p-1.5">
             <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_28px] gap-2">
@@ -395,7 +397,7 @@ export function ColorGradingControls({
                   </optgroup>
                 )}
               </NativeSelect>
-              <button
+              <IconButton variant="plain"
                 type="button"
                 disabled={!onImportAssets || lutImporting}
                 onClick={(event) => {
@@ -406,13 +408,12 @@ export function ColorGradingControls({
                 title={lutImporting ? t("Importing…") : t("Import .cube LUT")}
                 aria-label={t("Import .cube LUT")}
                 aria-busy={lutImporting}
-              >
-                {lutImporting ? (
+                icon={lutImporting ? (
                   <span className="h-3 w-3 animate-spin rounded-full border border-panel-text-4 border-t-transparent motion-reduce:animate-none" />
                 ) : (
                   <Plus size={13} />
                 )}
-              </button>
+              />
               <input
                 ref={lutInputRef}
                 type="file"
@@ -523,14 +524,13 @@ export function ColorGradingControls({
               <span className={`${LABEL} min-w-0 flex-1 truncate`}>
                 {detailSettings === "vignette" ? t("Vignette settings") : t("Grain settings")}
               </span>
-              <button
+              <IconButton variant="plain"
                 type="button"
                 aria-label={t("Close settings")}
                 onClick={() => setDetailSettings(null)}
                 className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm text-panel-text-5 transition-colors hover:bg-panel-hover hover:text-panel-text-1"
-              >
-                <X size={11} />
-              </button>
+                icon={<X size={11} />}
+              />
             </div>
             <div className="grid min-w-0 grid-cols-2 gap-1.5">
               {detailSettingsSliders.map((slider) => renderDetailSlider(slider))}

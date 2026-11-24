@@ -1,3 +1,4 @@
+import { Button } from "open-design-ui/button";
 import { MenuPanel } from "../ui/MenuPanel";
 import { FieldTrigger } from "../ui/FormField";
 import { PropertyLabel } from "./PropertyLabel";
@@ -340,14 +341,14 @@ export function FontFamilyField({
           aria-autocomplete="list"
           className="min-w-0"
         />
-        <button
+        <Button variant="plain"
           type="button"
           disabled={disabled || importingFonts || !onImportFonts}
           onClick={() => fontInputRef.current?.click()}
           className="rounded-lg border border-neutral-700 bg-neutral-900 px-2.5 text-[10px] font-medium text-neutral-400 transition-colors hover:border-neutral-600 hover:text-neutral-100 disabled:cursor-not-allowed disabled:text-text-off"
         >
           {importingFonts ? "..." : t("Import")}
-        </button>
+        </Button>
         <input
           ref={fontInputRef}
           type="file"
@@ -406,9 +407,9 @@ export function FontFamilyField({
         {lists.error && (
           <div role="alert" className="px-2 py-3 text-[11px] text-neutral-500">
             <p>{t("Couldn't load local fonts.")}</p>
-            <button type="button" onClick={preloadFontLists} className="mt-2 rounded px-2 py-1 text-neutral-300 hover:bg-neutral-900">
+            <Button variant="plain" type="button" onClick={preloadFontLists} className="mt-2 rounded px-2 py-1 text-neutral-300 hover:bg-neutral-900">
               {t("Retry")}
-            </button>
+            </Button>
           </div>
         )}
       </div>

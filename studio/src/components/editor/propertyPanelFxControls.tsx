@@ -1,3 +1,4 @@
+import { Button } from "open-design-ui/button";
 import { OverflowText } from "../ui/OverflowText";
 import { FieldInput, NativeSelect } from "../ui/FormField";
 import { systemMessage } from "../../i18n/systemMessages";
@@ -91,7 +92,7 @@ export function AutomationToggle({
   if (!onAutomate && !onRemoveAutomation) return null;
   return (
     <Tooltip label={automated ? t("Automated") : t("Automate")}>
-      <button
+      <Button variant="plain"
         type="button"
         className={`hf-fx-automate w-[16px] shrink-0 rounded-[3px] border font-mono text-[9px] leading-none ${
           automated
@@ -103,7 +104,7 @@ export function AutomationToggle({
         onClick={() => (automated ? onRemoveAutomation?.(paramKey) : onAutomate?.(paramKey))}
       >
         A
-      </button>
+      </Button>
     </Tooltip>
   );
 }

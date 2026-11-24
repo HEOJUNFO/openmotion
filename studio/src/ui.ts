@@ -1,7 +1,7 @@
 export { Button, buttonBase, buttonSizes, buttonVariants } from "open-design-ui/button";
 export type { ButtonSize, ButtonVariant, PreviewState } from "open-design-ui/button";
 export { HyperframesLogo } from "./components/ui/HyperframesLogo";
-export { IconButton } from "./components/ui/IconButton";
+export { IconButton } from "open-design-ui/icon-button";
 export { Tab, TabPanel, Tabs, TabsList } from "./components/ui/Tabs";
 export { HyperframesLoader } from "./components/ui/HyperframesLoader";
 export type { HyperframesLoaderProps } from "./components/ui/HyperframesLoader";

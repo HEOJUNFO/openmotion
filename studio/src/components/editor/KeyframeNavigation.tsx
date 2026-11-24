@@ -1,3 +1,4 @@
+import { IconButton } from "open-design-ui/icon-button";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
 import { memo } from "react";
@@ -136,16 +137,15 @@ export const KeyframeNavigation = memo(function KeyframeNavigation({
     // other AND the diamond, and one control swallowing its neighbour's clicks is
     // a worse 2.5.8 failure than a small target. Do not "fix" these to 24.
     <div className="flex h-5 items-center gap-0.5">
-      <button
+      <IconButton variant="plain"
         type="button"
         disabled={!prevKf}
         onClick={() => prevKf && onSeek(prevKf.percentage)}
         title={t("Previous keyframe")}
         aria-label={t("Previous {property} keyframe", { property: property })}
         className="relative flex h-5 w-3 items-center justify-center disabled:cursor-default before:absolute before:-inset-1.5 before:content-['']"
-      >
-        <RemixIcon name="arrow-left-s-line" size={10} className={prevKf ? "text-text-2" : "text-text-off"} />
-      </button>
+        icon={<RemixIcon name="arrow-left-s-line" size={10} className={prevKf ? "text-text-2" : "text-text-off"} />}
+      />
       <KeyframeDiamond
         state={diamondState}
         onClick={handleDiamondClick}
@@ -158,16 +158,15 @@ export const KeyframeNavigation = memo(function KeyframeNavigation({
               : t("Add {property} keyframe", { property: property })
         }
       />
-      <button
+      <IconButton variant="plain"
         type="button"
         disabled={!nextKf}
         onClick={() => nextKf && onSeek(nextKf.percentage)}
         title={t("Next keyframe")}
         aria-label={t("Next {property} keyframe", { property: property })}
         className="relative flex h-5 w-3 items-center justify-center disabled:cursor-default before:absolute before:-inset-1.5 before:content-['']"
-      >
-        <RemixIcon name="arrow-right-s-line" size={10} className={nextKf ? "text-text-2" : "text-text-off"} />
-      </button>
+        icon={<RemixIcon name="arrow-right-s-line" size={10} className={nextKf ? "text-text-2" : "text-text-off"} />}
+      />
     </div>
   );
 });
